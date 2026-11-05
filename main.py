@@ -9,11 +9,18 @@ import struct
 import shutil
 import re
 import tkinter as tk
+import threading
+import queue
+import subprocess
+import webbrowser
 from tkinter import filedialog, colorchooser
+from updater import download_release_asset, fetch_latest_release, launch_windows_updater, parse_version
 # ==============================================================================
 # 1. IDENTITÉ PRO, ICÔNE AUTO-GÉNÉRÉE & ARBORESCENCE PAR DOSSIERS D'USINES
 # ==============================================================================
 NOM_LOGICIEL = "J.A.R.V.I.S. — Just A Rather Very Industrial Solver"
+VERSION_APPLICATION = "1.0.1"
+DEPOT_GITHUB = "HellFire9476/J.A.R.V.I.S.-Just-A-Rather-Very-Industrial-Solver"
 NOM_DOSSIER_RACINE = "FRIDAY_OS"
 if getattr(sys, 'frozen', False):
     DOSSIER_APP = os.path.dirname(sys.executable)
@@ -186,6 +193,7 @@ class PopupCustom:
             "warning": (THEME["status_warn"], "⚡"),
             "success": (THEME["status_ok"], "✅"),
             "yesno": (THEME["status_err"], "🗑️"),
+            "update": (THEME["tab_sel"], "⬆️"),
             "input": (THEME["tab_sel"], "✏️")
         }
         c_accent, icone = c_map.get(type_popup, (THEME["tab_sel"], "ℹ️"))
@@ -226,9 +234,12 @@ class PopupCustom:
         if type_popup in ["info", "error", "warning", "success"]:
             ctk.CTkButton(btn_frame, text="✓  VALIDER", width=150, height=36, corner_radius=10, fg_color=THEME["tab_sel"] if type_popup == "info" else c_accent, hover_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=self.on_ok).pack()
             self.top.bind("<Return>", lambda e: self.on_ok())
-        elif type_popup == "yesno":
-            ctk.CTkButton(btn_frame, text="✓  CONFIRMER", width=145, height=36, corner_radius=10, fg_color=THEME["status_err"], hover_color="#991B1B", text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=self.on_yes).pack(side="left", padx=8)
-            ctk.CTkButton(btn_frame, text="✕  ANNULER", width=145, height=36, corner_radius=10, fg_color=THEME["bg_card"], hover_color=THEME["border"], text_color=THEME["text_main"], font=ctk.CTkFont(size=12, weight="bold"), command=self.on_no).pack(side="left", padx=8)
+        elif type_popup in ["yesno", "update"]:
+            texte_confirmer = "↻  REDÉMARRER" if type_popup == "update" else "✓  CONFIRMER"
+            texte_annuler = "PLUS TARD" if type_popup == "update" else "✕  ANNULER"
+            couleur_confirmer = THEME["tab_sel"] if type_popup == "update" else THEME["status_err"]
+            ctk.CTkButton(btn_frame, text=texte_confirmer, width=145, height=36, corner_radius=10, fg_color=couleur_confirmer, hover_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=self.on_yes).pack(side="left", padx=8)
+            ctk.CTkButton(btn_frame, text=texte_annuler, width=145, height=36, corner_radius=10, fg_color=THEME["bg_card"], hover_color=THEME["border"], text_color=THEME["text_main"], font=ctk.CTkFont(size=12, weight="bold"), command=self.on_no).pack(side="left", padx=8)
         elif type_popup == "input":
             ctk.CTkButton(btn_frame, text="✓  VALIDER", width=155, height=36, corner_radius=10, fg_color=THEME["tab_sel"], hover_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=self.on_input_ok).pack(side="left", padx=8)
             ctk.CTkButton(btn_frame, text="✕  ANNULER", width=140, height=36, corner_radius=10, fg_color=THEME["bg_card"], hover_color=THEME["border"], text_color=THEME["text_main"], font=ctk.CTkFont(size=12, weight="bold"), command=self.on_no).pack(side="left", padx=8)
@@ -261,7 +272,99 @@ def popup_success(titre, message): return PopupCustom(app, titre, message, "succ
 def popup_warning(titre, message): return PopupCustom(app, titre, message, "warning").get()
 def popup_error(titre, message): return PopupCustom(app, titre, message, "error").get()
 def popup_askyesno(titre, message): return PopupCustom(app, titre, message, "yesno").get()
+def popup_askupdate(titre, message): return PopupCustom(app, titre, message, "update").get()
 def popup_askstring(titre, message, initialvalue=""): return PopupCustom(app, titre, message, "input", initialvalue).get()
+
+_queue_maj = queue.Queue()
+_verification_maj_active = False
+
+def _surveiller_resultat_maj():
+    global _verification_maj_active
+    try:
+        action, resultat, manuelle = _queue_maj.get_nowait()
+    except queue.Empty:
+        if _verification_maj_active:
+            app.after(100, _surveiller_resultat_maj)
+        return
+
+    _verification_maj_active = False
+    if action == "erreur":
+        if manuelle:
+            popup_error("Vérification des mises à jour", str(resultat))
+        return
+    if action == "erreur_telechargement":
+        popup_error("Téléchargement de la mise à jour", str(resultat))
+        return
+
+    if action == "verification":
+        version_locale = parse_version(VERSION_APPLICATION)
+        if resultat.version <= version_locale:
+            if manuelle:
+                popup_info("Mises à jour", f"J.A.R.V.I.S. est à jour ({VERSION_APPLICATION}).")
+            return
+        _demarrer_telechargement_maj(resultat)
+        return
+
+    if action == "telechargement":
+        if not popup_askupdate(
+            "Mise à jour prête",
+            f"La version {resultat[0].tag} a été téléchargée et vérifiée.\n\n"
+            "Redémarrer maintenant pour l'installer ? Vos usines et réglages enregistrés "
+            "seront conservés. Si tu choisis « Plus tard », l'application gardera la version actuelle.",
+        ):
+            try:
+                os.remove(resultat[1])
+            except OSError as error:
+                popup_error("Nettoyage de la mise à jour", f"Impossible de supprimer le fichier temporaire :\n{error}")
+            return
+        try:
+            launch_windows_updater(resultat[1], sys.executable, os.getpid())
+        except (OSError, subprocess.SubprocessError) as error:
+            try:
+                os.remove(resultat[1])
+            except OSError:
+                pass
+            popup_error("Installation de la mise à jour", f"Impossible de préparer la mise à jour :\n{error}")
+            return
+        app.destroy()
+
+def _demarrer_telechargement_maj(release):
+    global _verification_maj_active
+    _verification_maj_active = True
+
+    def telecharger():
+        try:
+            path = download_release_asset(release)
+            _queue_maj.put(("telechargement", (release, path), False))
+        except Exception as error:
+            _queue_maj.put(("erreur_telechargement", error, False))
+
+    threading.Thread(target=telecharger, name="JARVIS-update-download", daemon=True).start()
+    app.after(100, _surveiller_resultat_maj)
+
+def verifier_mises_a_jour(manuelle=True):
+    global _verification_maj_active
+    if not getattr(sys, "frozen", False):
+        if manuelle:
+            webbrowser.open(
+                f"https://github.com/{DEPOT_GITHUB}/releases/latest",
+                new=2,
+            )
+        return
+    if _verification_maj_active:
+        return
+    _verification_maj_active = True
+
+    def verifier():
+        try:
+            release = fetch_latest_release(DEPOT_GITHUB)
+            _queue_maj.put(("verification", release, manuelle))
+        except Exception as error:
+            _queue_maj.put(("erreur", error, manuelle))
+
+    threading.Thread(target=verifier, name="JARVIS-update-check", daemon=True).start()
+    app.after(100, _surveiller_resultat_maj)
+
 # ==============================================================================
 # 4. MOTEUR DE MODS MULTI-CATÉGORIES (PRODUCTION, EXTRACTION, ÉNERGIE, REFINED POWER)
 # ==============================================================================
@@ -4102,6 +4205,13 @@ def ouvrir_fenetre_options():
     win.bind("<Escape>", lambda e: win.destroy())
 btn_options_hdr = ctk.CTkButton(header, text="⚙️ THÈMES", width=110, corner_radius=8, fg_color=THEME["tab_sel"], hover_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=ouvrir_fenetre_options)
 btn_options_hdr.pack(side="right", padx=(4, 14), pady=12)
+btn_verifier_maj = ctk.CTkButton(
+    header, text="⬆️ MISE À JOUR", width=125, corner_radius=8,
+    fg_color=THEME["seg_sel"], hover_color=THEME["tab_sel"],
+    text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"),
+    command=lambda: verifier_mises_a_jour(manuelle=True)
+)
+btn_verifier_maj.pack(side="right", padx=4, pady=12)
 ctk.CTkButton(header, text="📂 Importer", width=95, corner_radius=8, fg_color="#334155", text_color="#FFFFFF", command=charger_projet_complet).pack(side="right", padx=4, pady=12)
 ctk.CTkButton(header, text="💾 Exporter", width=95, corner_radius=8, fg_color="#065F46", text_color="#FFFFFF", command=sauvegarder_projet_complet).pack(side="right", padx=4, pady=12)
 def on_toggle_ficsmas_global():
@@ -4120,4 +4230,5 @@ construire_onglet_wiki()
 charger_usine_dans_ui(usine_active_nom)
 construire_onglet_auto()
 appliquer_couleurs_dynamiques()
+app.after(1800, lambda: verifier_mises_a_jour(manuelle=False))
 app.mainloop()
