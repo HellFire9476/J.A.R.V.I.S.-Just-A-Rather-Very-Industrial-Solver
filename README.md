@@ -38,9 +38,10 @@ Le fichier `Planificateur Satisfactory - Recettes.csv` doit rester à côté de 
 
 ## Construire et publier une version Windows
 
-Avec l'environnement virtuel activé :
+La compilation se fait sur ton propre PC ; GitHub Actions n'est pas nécessaire. Avec l'environnement virtuel activé :
 
 ```powershell
+python -m unittest discover -s tests -v
 python -m PyInstaller --noconfirm JARVIS.spec
 ```
 
@@ -49,19 +50,23 @@ L'exécutable est produit dans `dist\JARVIS.exe`.
 Pour publier une nouvelle version :
 
 1. Modifier `VERSION_APPLICATION` dans `main.py` et l'augmenter (par exemple `1.0.2` après `1.0.1`).
-2. Valider et pousser les changements sur la branche `main`.
-3. Créer et pousser un tag `v` correspondant exactement à cette version :
+2. Lancer les tests et construire `dist\JARVIS.exe` avec les commandes ci-dessus.
+3. Enregistrer et pousser les changements de code sur la branche `main`.
+4. Créer et pousser un tag `v` correspondant exactement à cette version :
 
    ```powershell
+   git add -A
+   git commit -m "Release v1.0.2"
+   git push origin main
    git tag v1.0.2
    git push origin v1.0.2
    ```
 
-GitHub Actions construit alors l'exécutable Windows et crée automatiquement une Release. Au démarrage, l'application installée recherche les nouvelles versions et télécharge la mise à jour en arrière-plan. Elle demande confirmation avant de fermer et redémarrer l'application pour remplacer l'exécutable ; si l'utilisateur choisit « Plus tard », la version actuelle reste ouverte.
+5. Sur GitHub, crée une Release depuis le tag `v1.0.2`, joins le fichier `dist\JARVIS.exe`, puis publie-la. L'application vérifie les Releases publiques et télécharge l'exécutable en arrière-plan ; chaque utilisateur peut choisir quand redémarrer pour installer la mise à jour. Il n'a pas besoin de visiter GitHub lui-même.
 
-La version `v1.0.0` ne contient pas encore le mécanisme de mise à jour. Les utilisateurs de cette première version devront télécharger `v1.0.1` manuellement une seule fois ; les versions suivantes pourront se mettre à jour depuis l'application.
+La version `v1.0.0` ne contient pas le mécanisme de mise à jour. Ses utilisateurs doivent installer `v1.0.1` manuellement une première fois ; les versions ultérieures pourront ensuite s'installer depuis l'application.
 
-Le dépôt doit rester public pour que l'application et les amis qui l'utilisent puissent accéder aux Releases sans authentification. Les données de l'usine restent séparées du programme et ne sont pas envoyées à GitHub.
+Le dépôt doit rester public pour que l'application et les amis qui l'utilisent puissent accéder aux Releases sans authentification. Les données de l'usine restent séparées du programme et ne sont pas envoyées à GitHub. Les binaires ne sont pas conservés dans le dépôt source : ils sont ajoutés comme fichiers joints aux Releases.
 
 ## Vérifier les tests
 
