@@ -229,7 +229,7 @@ class PopupCustom:
                 self.entry.insert(0, valeur_initiale)
             self.top.after(40, lambda: self.entry.focus_force())
             self.entry.bind("<Return>", lambda e: self.on_input_ok())
-        btn_frame = ctk.CTkFrame(self.card, fg_color=THEME["bg_panel"])
+        btn_frame = ctk.CTkFrame(self.card, fg_color=THEME["bg_panel"], corner_radius=0)
         btn_frame.pack(pady=(0, 16))
         if type_popup in ["info", "error", "warning", "success"]:
             ctk.CTkButton(btn_frame, text="✓  VALIDER", width=150, height=36, corner_radius=10, fg_color=THEME["tab_sel"] if type_popup == "info" else c_accent, hover_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=self.on_ok).pack()
@@ -706,6 +706,117 @@ def charger_et_fusionner_donnees():
     except Exception as e:
         erreur_chargement = str(e)
 charger_et_fusionner_donnees()
+
+PLACEHOLDER_RESSOURCE = "Choisir..."
+
+def liste_ressources_disponibles():
+    ressources = set(RESSOURCES_EXTRACTION_MAP)
+    ressources.update(STACKS_DEFAUT)
+    ressources.update(MODS_CONFIG.get("stacks_custom", {}))
+    for recette in MODS_CONFIG.get("couts_construction", {}).values():
+        if isinstance(recette, dict):
+            ressources.update(recette)
+    for colonne in [
+        "Objet de base",
+        "Entrée 1", "Entrée 2", "Entrée 3", "Entrée 4",
+        "Sortie 1", "Sortie 2",
+    ]:
+        if colonne in df.columns:
+            ressources.update(
+                str(valeur).strip()
+                for valeur in df[colonne].dropna()
+                if str(valeur).strip()
+            )
+    return sorted((nom for nom in ressources if isinstance(nom, str) and nom.strip()), key=str.casefold)
+
+def ouvrir_selecteur_ressource(parent, valeur_actuelle, on_select):
+    fenetre = ctk.CTkToplevel(parent.winfo_toplevel())
+    fenetre.title("Choisir une ressource")
+    fenetre.transient(parent.winfo_toplevel())
+    fenetre.geometry("440x520")
+    fenetre.minsize(340, 280)
+    fenetre.grid_columnconfigure(0, weight=1)
+    fenetre.grid_rowconfigure(2, weight=1)
+    fenetre.grid_rowconfigure(4, weight=0)
+    ctk.CTkLabel(
+        fenetre, text="Choisis une ressource",
+        font=ctk.CTkFont(size=15, weight="bold"),
+        text_color=THEME["text_main"]
+    ).grid(row=0, column=0, padx=14, pady=(14, 6), sticky="w")
+    recherche = ctk.CTkEntry(
+        fenetre, placeholder_text="Rechercher une ressource...",
+        fg_color=THEME["bg_card"], text_color=THEME["text_main"]
+    )
+    recherche.grid(row=1, column=0, padx=14, pady=(2, 8), sticky="ew")
+    liste = ctk.CTkScrollableFrame(fenetre, fg_color=THEME["bg_card"], corner_radius=8)
+    liste.grid(row=2, column=0, padx=14, pady=(0, 8), sticky="nsew")
+    statut = ctk.CTkLabel(
+        fenetre, text="Ressource de mod absente ? Ajoute le nom saisi ci-dessus.",
+        text_color=THEME["text_muted"]
+    )
+    statut.grid(row=3, column=0, padx=14, pady=(0, 4), sticky="w")
+    ressources = liste_ressources_disponibles()
+    if valeur_actuelle and valeur_actuelle not in ressources:
+        ressources.append(valeur_actuelle)
+        ressources.sort(key=str.casefold)
+
+    def choisir(nom):
+        on_select(nom)
+        fenetre.destroy()
+
+    def ajouter_ressource_personnalisee():
+        nom = recherche.get().strip()
+        if not nom:
+            statut.configure(text="Saisis le nom de la ressource à ajouter.")
+            return
+        existante = next((ressource for ressource in ressources if ressource.casefold() == nom.casefold()), None)
+        if existante:
+            choisir(existante)
+            return
+        MODS_CONFIG.setdefault("stacks_custom", {})[nom] = 100
+        sauvegarder_mods()
+        choisir(nom)
+
+    def actualiser_liste(_=None):
+        for widget in liste.winfo_children():
+            widget.destroy()
+        terme = recherche.get().strip().casefold()
+        resultats = [nom for nom in ressources if terme in nom.casefold()]
+        if not resultats:
+            ctk.CTkLabel(
+                liste, text="Aucune ressource trouvée.",
+                text_color=THEME["text_muted"]
+            ).pack(fill="x", padx=8, pady=10)
+            return
+        for nom in resultats:
+            ctk.CTkButton(
+                liste, text=nom, anchor="w",
+                fg_color=THEME["bg_card_alt"], hover_color=THEME["tab_sel"],
+                text_color=THEME["text_main"],
+                command=lambda nom=nom: choisir(nom)
+            ).pack(fill="x", padx=4, pady=2)
+
+    recherche.bind("<KeyRelease>", actualiser_liste)
+    def choisir_premier_resultat(_):
+        terme = recherche.get().strip().casefold()
+        resultat = next((nom for nom in ressources if terme in nom.casefold()), None)
+        if resultat:
+            choisir(resultat)
+    recherche.bind("<Return>", choisir_premier_resultat)
+    fenetre.bind("<Escape>", lambda _: fenetre.destroy())
+    actualiser_liste()
+    ctk.CTkButton(
+        fenetre, text="Ajouter comme ressource personnalisée (stack 100)",
+        fg_color=THEME["tab_sel"], hover_color=THEME["seg_sel"],
+        text_color="#FFFFFF", command=ajouter_ressource_personnalisee
+    ).grid(row=4, column=0, padx=14, pady=(0, 14), sticky="ew")
+    fenetre.grab_set()
+    fenetre.after(50, recherche.focus_set)
+
+def valeur_selecteur_ressource(bouton):
+    valeur = bouton.cget("text")
+    return "" if valeur == PLACEHOLDER_RESSOURCE else valeur
+
 # ==============================================================================
 # 7. INITIALISATION DE LA FENÊTRE & PERSISTANCE PAR DOSSIERS D'USINES
 # ==============================================================================
@@ -914,66 +1025,6 @@ def organiser_cartes_grille(cartes, conteneur):
             sticky="nsew", padx=6, pady=6
         )
 
-class FrameDefilantOptimise(ctk.CTkScrollableFrame):
-    def __init__(self, *args, **kwargs):
-        self._scroll_delta_pending = {"x": 0, "y": 0}
-        self._scroll_job = None
-        self._barre_scroll_args = None
-        self._barre_scroll_job = None
-        super().__init__(*args, **kwargs)
-        self._scrollbar.configure(command=self._planifier_defilement_barre)
-
-    def _mouse_wheel_all(self, event):
-        if not self._check_if_valid_scroll(event.widget):
-            return
-
-        axe = "x" if self._shift_pressed else "y"
-        if sys.platform.startswith("win") or sys.platform == "darwin":
-            self._scroll_delta_pending[axe] += event.delta
-        elif sys.platform.startswith("linux"):
-            self._scroll_delta_pending[axe] += -1 if event.num == 4 else 1
-
-        if self._scroll_job is None:
-            self._scroll_job = self.after(16, self._appliquer_defilement)
-
-    def _appliquer_defilement(self):
-        self._scroll_job = None
-        for axe, delta in self._scroll_delta_pending.items():
-            self._scroll_delta_pending[axe] = 0
-            if sys.platform.startswith("win"):
-                pas = -int(delta / 6)
-            elif sys.platform == "darwin":
-                pas = -delta
-            else:
-                pas = delta
-            if pas:
-                vue = self._parent_canvas.xview() if axe == "x" else self._parent_canvas.yview()
-                if vue != (0.0, 1.0):
-                    self._parent_canvas.xview("scroll", pas, "units") if axe == "x" else self._parent_canvas.yview("scroll", pas, "units")
-
-    def _planifier_defilement_barre(self, *args):
-        self._barre_scroll_args = args
-        if self._barre_scroll_job is None:
-            self._barre_scroll_job = self.after(16, self._appliquer_defilement_barre)
-
-    def _appliquer_defilement_barre(self):
-        self._barre_scroll_job = None
-        args = self._barre_scroll_args
-        self._barre_scroll_args = None
-        if args is not None:
-            self._parent_canvas.yview(*args)
-
-    def destroy(self):
-        for attribute in ("_scroll_job", "_barre_scroll_job"):
-            job = getattr(self, attribute)
-            if job is not None:
-                try:
-                    self.after_cancel(job)
-                except tk.TclError:
-                    pass
-                setattr(self, attribute, None)
-        super().destroy()
-
 # ==============================================================================
 # 8. CARTES MODULAIRES : ATELIERS, FOREUSES, PARCS ÉNERGIE, REFINED POWER & DIGITAL STORAGE
 # ==============================================================================
@@ -982,7 +1033,7 @@ class CarteAtelierModulaire(ctk.CTkFrame):
         super().__init__(master, fg_color=THEME["bg_card"], border_color=THEME["border"], border_width=1, corner_radius=10)
         self.numero = numero
         paliers = generer_paliers_cadence()
-        top_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        top_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         top_bar.pack(fill="x", padx=12, pady=(10, 6))
         ctk.CTkLabel(top_bar, text=f"ATELIER #{numero:02d}", font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), fg_color=THEME["tab_sel"], text_color="#FFFFFF", corner_radius=6, padx=8, pady=4).pack(side="left", padx=(0, 8))
         self.ent_nom = ctk.CTkEntry(top_bar, width=160, placeholder_text="Nom personnalisé", fg_color=THEME["bg_card_alt"], text_color=THEME["text_main"])
@@ -991,18 +1042,18 @@ class CarteAtelierModulaire(ctk.CTkFrame):
         ctk.CTkButton(top_bar, text="✕ RETIRER", width=85, height=28, corner_radius=8, fg_color="#991B1B", hover_color="#7F1D1D", text_color="#FFFFFF", font=ctk.CTkFont(size=11, weight="bold"), command=self.supprimer).pack(side="right", padx=(4, 8))
         self.btn_details = ctk.CTkButton(top_bar, text="⌃ Détails", width=82, height=28, corner_radius=8, fg_color=THEME["bg_card_alt"], text_color=THEME["text_main"], command=self.basculer_details)
         self.btn_details.pack(side="right", padx=(4, 8))
-        resume_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        resume_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         resume_bar.pack(fill="x", padx=12, pady=(0, 4))
         self.lbl_resume_carte = ctk.CTkLabel(resume_bar, text="", anchor="w", text_color=THEME["text_muted"])
         self.lbl_resume_carte.pack(fill="x", padx=4)
-        self.frame_details = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        self.frame_details = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         self.frame_details.pack(fill="x")
         self._details_ouverts = True
-        detail_bar = ctk.CTkFrame(self.frame_details, fg_color=THEME["bg_card"])
+        detail_bar = ctk.CTkFrame(self.frame_details, fg_color=THEME["bg_card"], corner_radius=0)
         detail_bar.pack(fill="x", padx=12, pady=(0, 4))
-        row_machine = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"])
+        row_machine = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"], corner_radius=0)
         row_machine.pack(fill="x")
-        row_recipe = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"])
+        row_recipe = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"], corner_radius=0)
         row_recipe.pack(fill="x", pady=(4, 0))
         ctk.CTkLabel(row_machine, text="Bâtiment :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_muted"]).pack(side="left", padx=(0, 4))
         self.menu_machine = ctk.CTkOptionMenu(row_machine, values=liste_machines_prod, width=165, fg_color=THEME["bg_card_alt"], button_color=THEME["tab_sel"], text_color=THEME["text_main"], command=self.on_machine_change)
@@ -1018,9 +1069,9 @@ class CarteAtelierModulaire(ctk.CTkFrame):
         self.lbl_recette_details.pack(fill="x", padx=14, pady=(0, 3))
         mid_bar = ctk.CTkFrame(self.frame_details, fg_color=THEME["bg_card_alt"], corner_radius=8)
         mid_bar.pack(fill="x", padx=12, pady=4)
-        row_controls = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"])
+        row_controls = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"], corner_radius=0)
         row_controls.pack(fill="x", padx=6, pady=(5, 2))
-        row_cadence = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"])
+        row_cadence = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"], corner_radius=0)
         row_cadence.pack(fill="x", padx=8, pady=(0, 5))
         ajouter_bouton_aide(row_controls, "La quantité indique combien de bâtiments tu as. La cadence fait aller la machine plus ou moins vite. Les Somersloops donnent plus de production, mais prennent des emplacements dans cette machine.")
         ctk.CTkLabel(row_controls, text="Qté :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_main"]).pack(side="left", padx=(4, 4), pady=5)
@@ -1166,7 +1217,7 @@ class CarteForeuseModulaire(ctk.CTkFrame):
         super().__init__(master, fg_color=THEME["bg_card"], border_color=THEME["border"], border_width=1, corner_radius=10)
         self.numero = numero
         paliers = generer_paliers_cadence()
-        top_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        top_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         top_bar.pack(fill="x", padx=12, pady=(10, 6))
         ctk.CTkLabel(top_bar, text=f"EXTRACTEUR #{numero:02d}", font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), fg_color=THEME["seg_sel"], text_color="#FFFFFF", corner_radius=6, padx=8, pady=4).pack(side="left", padx=(0, 8))
         self.ent_nom = ctk.CTkEntry(top_bar, width=160, placeholder_text="Nom personnalisé", fg_color=THEME["bg_card_alt"], text_color=THEME["text_main"])
@@ -1175,18 +1226,18 @@ class CarteForeuseModulaire(ctk.CTkFrame):
         ctk.CTkButton(top_bar, text="✕ RETIRER", width=85, height=28, corner_radius=8, fg_color="#991B1B", hover_color="#7F1D1D", text_color="#FFFFFF", font=ctk.CTkFont(size=11, weight="bold"), command=self.supprimer).pack(side="right", padx=(4, 8))
         self.btn_details = ctk.CTkButton(top_bar, text="⌃ Détails", width=82, height=28, corner_radius=8, fg_color=THEME["bg_card_alt"], text_color=THEME["text_main"], command=self.basculer_details)
         self.btn_details.pack(side="right", padx=(4, 8))
-        resume_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        resume_bar = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         resume_bar.pack(fill="x", padx=12, pady=(0, 4))
         self.lbl_resume_carte = ctk.CTkLabel(resume_bar, text="", anchor="w", text_color=THEME["text_muted"])
         self.lbl_resume_carte.pack(fill="x", padx=4)
-        self.frame_details = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        self.frame_details = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         self.frame_details.pack(fill="x")
         self._details_ouverts = True
-        detail_bar = ctk.CTkFrame(self.frame_details, fg_color=THEME["bg_card"])
+        detail_bar = ctk.CTkFrame(self.frame_details, fg_color=THEME["bg_card"], corner_radius=0)
         detail_bar.pack(fill="x", padx=12, pady=(0, 4))
-        row_machine = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"])
+        row_machine = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"], corner_radius=0)
         row_machine.pack(fill="x")
-        row_resource = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"])
+        row_resource = ctk.CTkFrame(detail_bar, fg_color=THEME["bg_card"], corner_radius=0)
         row_resource.pack(fill="x", pady=(4, 0))
         self.menu_machine = ctk.CTkOptionMenu(row_machine, values=liste_machines_extraction, width=175, fg_color=THEME["bg_card_alt"], button_color=THEME["seg_sel"], text_color=THEME["text_main"], command=self.update_options)
         self.menu_machine.pack(side="left", padx=(0, 10))
@@ -1202,9 +1253,9 @@ class CarteForeuseModulaire(ctk.CTkFrame):
         self.menu_ressource.pack(fill="x", expand=True, padx=(0, 4))
         mid_bar = ctk.CTkFrame(self.frame_details, fg_color=THEME["bg_card_alt"], corner_radius=8)
         mid_bar.pack(fill="x", padx=12, pady=4)
-        row_controls = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"])
+        row_controls = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"], corner_radius=0)
         row_controls.pack(fill="x", padx=6, pady=(5, 2))
-        row_cadence = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"])
+        row_cadence = ctk.CTkFrame(mid_bar, fg_color=THEME["bg_card_alt"], corner_radius=0)
         row_cadence.pack(fill="x", padx=8, pady=(0, 5))
         ajouter_bouton_aide(row_controls, "La quantité indique combien d'extracteurs tu as. La pureté du gisement et la cadence changent la quantité de ressource récupérée. Les foreuses n'ont pas d'emplacement Somersloop.")
         ctk.CTkLabel(row_controls, text="Qté :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_main"]).pack(side="left", padx=(4, 4), pady=5)
@@ -1331,7 +1382,7 @@ class CarteParcEnergetique(ctk.CTkFrame):
         self.puretes_etapes = {}
         self.widgets_etapes = []
         paliers = generer_paliers_cadence()
-        row1 = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        row1 = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         row1.pack(fill="x", padx=12, pady=(10, 4))
         ctk.CTkLabel(row1, text=f"⚡ PARC ÉNERGÉTIQUE #{numero:02d}", font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), fg_color=THEME["tab_sel"], text_color="#FFFFFF", corner_radius=6, padx=10, pady=4).pack(side="left", padx=(0, 10))
         self.menu_filiere = ctk.CTkOptionMenu(row1, values=list(FILIERES_ENERGIE.keys()), width=340, fg_color=THEME["bg_card_alt"], button_color=THEME["tab_sel"], text_color=THEME["text_main"], font=ctk.CTkFont(size=12, weight="bold"), command=self.on_filiere_change)
@@ -1368,7 +1419,7 @@ class CarteParcEnergetique(ctk.CTkFrame):
         self.entree_cadence_gen.bind("<KeyRelease>", self.on_manual_gen_surc)
         self.badge_bilan_parc = ctk.CTkLabel(row3, text="0x Centrale ➔ +0.0 MW", font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), fg_color=THEME["status_ok"], text_color="#000000", corner_radius=6, padx=10, pady=4)
         self.badge_bilan_parc.pack(side="right", padx=10)
-        self.frame_etapes = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        self.frame_etapes = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         self.frame_etapes.pack(fill="x", padx=12, pady=(4, 10))
         if init_data:
             if init_data.get("filiere") in FILIERES_ENERGIE:
@@ -1432,7 +1483,7 @@ class CarteParcEnergetique(ctk.CTkFrame):
             self.puretes_etapes[eid] = purete_init
             f_step = ctk.CTkFrame(self.frame_etapes, fg_color=THEME["bg_card_alt"], border_color=THEME["border"], border_width=1, corner_radius=8)
             f_step.pack(fill="x", pady=3)
-            r_top = ctk.CTkFrame(f_step, fg_color=THEME["bg_card_alt"])
+            r_top = ctk.CTkFrame(f_step, fg_color=THEME["bg_card_alt"], corner_radius=0)
             r_top.pack(fill="x", padx=10, pady=(6, 2))
             ctk.CTkLabel(r_top, text=f"Étape {idx} : {etape['nom']} ({etape['recette']})", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_main"]).pack(side="left")
             # Choix manuel du nombre de Raffineries / Extracteurs / Pompes
@@ -1462,7 +1513,7 @@ class CarteParcEnergetique(ctk.CTkFrame):
                 )
                 purity_control.set(purete_init if purete_init in MULTIPLICATEUR_PURETE else "Normal (1.0x)")
                 purity_control.pack(side="left", padx=2)
-            r_bot = ctk.CTkFrame(f_step, fg_color=THEME["bg_card_alt"])
+            r_bot = ctk.CTkFrame(f_step, fg_color=THEME["bg_card_alt"], corner_radius=0)
             r_bot.pack(fill="x", padx=10, pady=(2, 6))
             ctk.CTkLabel(r_bot, text="Surcadençage :", font=ctk.CTkFont(size=11), text_color=THEME["text_muted"]).pack(side="left", padx=(0, 6))
             ent_step = ctk.CTkEntry(r_bot, width=55, justify="center", fg_color=THEME["bg_card"], text_color=THEME["text_main"], font=ctk.CTkFont(family="Consolas", size=11, weight="bold"))
@@ -1523,7 +1574,7 @@ class CarteRefinedPower(ctk.CTkFrame):
     def __init__(self, master, numero, init_data=None):
         super().__init__(master, fg_color=THEME["bg_card"], border_color=THEME["accent_purple"], border_width=2, corner_radius=12)
         self.numero = numero
-        r1 = ctk.CTkFrame(self, fg_color=THEME["bg_card"])
+        r1 = ctk.CTkFrame(self, fg_color=THEME["bg_card"], corner_radius=0)
         r1.pack(fill="x", padx=12, pady=(10, 4))
         ctk.CTkLabel(r1, text=f"⚙️ REFINED POWER #{numero:02d} (VAPEUR ➔ RPM ➔ MW)", font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), fg_color=THEME["accent_purple"], text_color="#FFFFFF", corner_radius=6, padx=10, pady=4).pack(side="left", padx=(0, 10))
         self.badge_mw = ctk.CTkLabel(r1, text="🌀 0 RPM  ➔  ⚡ +0.0 MW", font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), fg_color=THEME["status_ok"], text_color="#000000", corner_radius=6, padx=10, pady=4)
@@ -1805,7 +1856,7 @@ class CarteEquipementDigitalStorage(ctk.CTkFrame):
             "Routeur Cloud Inter-Usines",
             "Network Power Adapter"
         ]
-        self.frame_entete = ctk.CTkFrame(self, fg_color=THEME["bg_card_alt"])
+        self.frame_entete = ctk.CTkFrame(self, fg_color=THEME["bg_card_alt"], corner_radius=0)
         self.frame_entete.pack(fill="x")
         ctk.CTkLabel(self.frame_entete, text="🖥️ Équipement :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_main"]).pack(side="left", padx=(10, 4), pady=8)
         self.combo_type = ctk.CTkComboBox(self.frame_entete, values=presets_ds, width=260, fg_color=THEME["bg_card"], text_color=THEME["text_main"], command=self.on_preset)
@@ -1834,23 +1885,23 @@ class CarteEquipementDigitalStorage(ctk.CTkFrame):
         self.ent_bw.pack(side="left", padx=2)
         self.ent_bw.bind("<KeyRelease>", lambda _: planifier_calcul())
         ctk.CTkButton(self.frame_entete, text="✕", width=32, height=26, corner_radius=6, fg_color="#991B1B", text_color="#FFFFFF", command=self.supprimer).pack(side="right", padx=8)
-        self.frame_baie = ctk.CTkFrame(self, fg_color=THEME["bg_card_alt"])
-        row_serveurs_aide = ctk.CTkFrame(self.frame_baie, fg_color=THEME["bg_card_alt"])
+        self.frame_baie = ctk.CTkFrame(self, fg_color=THEME["bg_card_alt"], corner_radius=0)
+        row_serveurs_aide = ctk.CTkFrame(self.frame_baie, fg_color=THEME["bg_card_alt"], corner_radius=0)
         row_serveurs_aide.pack(fill="x", padx=6, pady=(4, 2))
         ctk.CTkLabel(row_serveurs_aide, text=f"Choisis le nombre de serveurs (la baie a {DS_SLOTS_BAIE} cases ; un serveur 2U prend deux cases) :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_main"]).pack(side="left", padx=(0, 4))
         ajouter_bouton_aide(row_serveurs_aide, "Clique sur le numéro voulu : ce numéro et les précédents seront cochés. Exemple : cliquer sur 3 choisit 3 serveurs. Les numéros possibles diminuent quand les autres serveurs utilisent des cases.")
-        self.frame_serveurs = ctk.CTkFrame(self.frame_baie, fg_color=THEME["bg_card_alt"])
+        self.frame_serveurs = ctk.CTkFrame(self.frame_baie, fg_color=THEME["bg_card_alt"], corner_radius=0)
         self.frame_serveurs.pack(fill="x", padx=4)
         self.ent_serveurs = {}
         self.serveur_vars = {}
         self.serveur_checks = {}
         self.lbl_serveurs = {}
         for index, (nom, spec) in enumerate(DS_SERVEURS.items()):
-            ligne = ctk.CTkFrame(self.frame_serveurs, fg_color=THEME["bg_card_alt"])
+            ligne = ctk.CTkFrame(self.frame_serveurs, fg_color=THEME["bg_card_alt"], corner_radius=0)
             ligne.grid(row=index, column=0, sticky="w")
             self.lbl_serveurs[nom] = ctk.CTkLabel(ligne, text=f"{nom} : 0", width=190, anchor="w", text_color=THEME["text_muted"])
             self.lbl_serveurs[nom].pack(side="left", padx=(4, 2), pady=3)
-            cases = ctk.CTkFrame(ligne, fg_color=THEME["bg_card_alt"])
+            cases = ctk.CTkFrame(ligne, fg_color=THEME["bg_card_alt"], corner_radius=0)
             cases.pack(side="left")
             ent = ctk.CTkEntry(self.frame_serveurs, width=1)
             ent.insert(0, "0")
@@ -1869,7 +1920,7 @@ class CarteEquipementDigitalStorage(ctk.CTkFrame):
                 case.grid(row=0, column=idx_serveur, padx=1, pady=2)
                 self.serveur_vars[nom].append(var)
                 self.serveur_checks[nom].append(case)
-        self.frame_disques = ctk.CTkFrame(self.frame_baie, fg_color=THEME["bg_card_alt"])
+        self.frame_disques = ctk.CTkFrame(self.frame_baie, fg_color=THEME["bg_card_alt"], corner_radius=0)
         self.frame_disques.pack(fill="x", padx=4, pady=(4, 0))
         self.frame_disques.grid_columnconfigure(0, weight=1)
         self.frames_famille = {}
@@ -2831,7 +2882,7 @@ ajouter_description_onglet(tab_mods, "Ici, tu changes les règles du jeu ou ajou
 ajouter_description_onglet(tab_recettes, "Ici, tu regardes comment fabriquer les objets et combien de matériaux préparer pour bâtir ton usine.")
 ajouter_description_onglet(tab_wiki, "Ici, tu peux lire le petit manuel du jeu. Exemple : cherche une page pour comprendre les serveurs.")
 for tab_mode in (tab_prod, tab_ext):
-    bar_mode = ctk.CTkFrame(tab_mode, fg_color=THEME["bg_panel"])
+    bar_mode = ctk.CTkFrame(tab_mode, fg_color=THEME["bg_panel"], corner_radius=0)
     bar_mode.pack(fill="x", padx=8, pady=(2, 0))
     ctk.CTkLabel(bar_mode, text="Affichage :", text_color=THEME["text_main"]).pack(side="left", padx=(4, 6), pady=4)
     ctk.CTkSegmentedButton(
@@ -2841,7 +2892,7 @@ for tab_mode in (tab_prod, tab_ext):
     ).pack(side="left", padx=4, pady=4)
 
 # -> Onglet 1 : Ateliers
-scroll_ateliers = FrameDefilantOptimise(tab_prod, fg_color=THEME["bg_panel"])
+scroll_ateliers = ctk.CTkScrollableFrame(tab_prod, fg_color=THEME["bg_panel"])
 scroll_ateliers.pack(fill="both", expand=True, padx=4, pady=(4, 8))
 def ajouter_carte_atelier_ui():
     c = CarteAtelierModulaire(scroll_ateliers, len(cartes_ateliers) + 1)
@@ -2851,7 +2902,7 @@ def ajouter_carte_atelier_ui():
 btn_add_atelier_main = ctk.CTkButton(tab_prod, text="+ AJOUTER UNE CARTE D'ATELIER DANS CETTE USINE", height=40, corner_radius=10, fg_color=THEME["tab_sel"], hover_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=13, weight="bold"), command=ajouter_carte_atelier_ui)
 btn_add_atelier_main.pack(fill="x", padx=8, pady=(0, 6))
 # -> Onglet 2 : Foreuses
-scroll_foreuses = FrameDefilantOptimise(tab_ext, fg_color=THEME["bg_panel"])
+scroll_foreuses = ctk.CTkScrollableFrame(tab_ext, fg_color=THEME["bg_panel"])
 scroll_foreuses.pack(fill="both", expand=True, padx=4, pady=(4, 8))
 def ajouter_carte_foreuse_ui():
     c = CarteForeuseModulaire(scroll_foreuses, len(cartes_foreuses) + 1)
@@ -2861,9 +2912,9 @@ def ajouter_carte_foreuse_ui():
 btn_add_foreuse_main = ctk.CTkButton(tab_ext, text="+ AJOUTER UNE FOREUSE / EXTRACTEUR DANS CETTE USINE", height=40, corner_radius=10, fg_color=THEME["seg_sel"], hover_color=THEME["tab_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=13, weight="bold"), command=ajouter_carte_foreuse_ui)
 btn_add_foreuse_main.pack(fill="x", padx=8, pady=(0, 6))
 # -> Onglet 3 : Parcs Énergétiques & Refined Power
-scroll_parcs_energie = FrameDefilantOptimise(tab_pwr, fg_color=THEME["bg_panel"])
+scroll_parcs_energie = ctk.CTkScrollableFrame(tab_pwr, fg_color=THEME["bg_panel"])
 scroll_parcs_energie.pack(fill="both", expand=True, padx=4, pady=(4, 8))
-bar_btns_pwr = ctk.CTkFrame(tab_pwr, fg_color=THEME["bg_panel"])
+bar_btns_pwr = ctk.CTkFrame(tab_pwr, fg_color=THEME["bg_panel"], corner_radius=0)
 bar_btns_pwr.pack(fill="x", padx=8, pady=(0, 6))
 def ajouter_carte_parc_ui():
     c = CarteParcEnergetique(scroll_parcs_energie, len(cartes_parcs_energie) + 1)
@@ -2882,7 +2933,7 @@ btn_add_rp_main.pack(side="right", expand=True, fill="x", padx=(4, 0))
 # ==============================================================================
 # 12. ONGLET 5 : DIGITAL STORAGE (RÉSEAU INFORMATIQUE D'OBJETS INTER-USINES)
 # ==============================================================================
-scroll_ds = FrameDefilantOptimise(tab_ds, fg_color=THEME["bg_panel"])
+scroll_ds = ctk.CTkScrollableFrame(tab_ds, fg_color=THEME["bg_panel"])
 scroll_ds.pack(fill="both", expand=True, padx=6, pady=6)
 card_ds_info = ctk.CTkFrame(scroll_ds, fg_color=THEME["bg_card"], border_color=THEME["tab_sel"], border_width=2, corner_radius=12)
 card_ds_info.pack(fill="x", padx=8, pady=6)
@@ -2893,7 +2944,7 @@ lbl_cloud_global_ds.pack(anchor="w", padx=14, pady=(0, 10))
 # Infrastructure matérielle Digital Storage
 card_ds_hw = ctk.CTkFrame(scroll_ds, fg_color=THEME["bg_card"], border_color=THEME["border"], border_width=1, corner_radius=12)
 card_ds_hw.pack(fill="x", padx=8, pady=6)
-hdr_ds_hw = ctk.CTkFrame(card_ds_hw, fg_color=THEME["bg_card"])
+hdr_ds_hw = ctk.CTkFrame(card_ds_hw, fg_color=THEME["bg_card"], corner_radius=0)
 hdr_ds_hw.pack(fill="x", padx=14, pady=(10, 4))
 ctk.CTkLabel(hdr_ds_hw, text="🖥️ A. INFRASTRUCTURE MATÉRIELLE DU RÉSEAU (SERVEURS, BAIES DE DISQUES, TERMINAUX, BUS)", font=ctk.CTkFont(size=13, weight="bold"), text_color=THEME["text_main"]).pack(side="left")
 def ajouter_ds_equip_ui():
@@ -2902,12 +2953,12 @@ def ajouter_ds_equip_ui():
     cartes_ds_equip.append(c)
     declencher_calcul()
 ctk.CTkButton(hdr_ds_hw, text="+ Ajouter Équipement Réseau", corner_radius=8, fg_color=THEME["tab_sel"], text_color="#FFFFFF", command=ajouter_ds_equip_ui).pack(side="right")
-frame_ds_equip_list = ctk.CTkFrame(card_ds_hw, fg_color=THEME["bg_card"])
+frame_ds_equip_list = ctk.CTkFrame(card_ds_hw, fg_color=THEME["bg_card"], corner_radius=0)
 frame_ds_equip_list.pack(fill="x", padx=6, pady=(4, 10))
 # Flux Cloud Upload / Download
 card_ds_cloud = ctk.CTkFrame(scroll_ds, fg_color=THEME["bg_card"], border_color=THEME["border"], border_width=1, corner_radius=12)
 card_ds_cloud.pack(fill="x", padx=8, pady=6)
-hdr_ds_cl = ctk.CTkFrame(card_ds_cloud, fg_color=THEME["bg_card"])
+hdr_ds_cl = ctk.CTkFrame(card_ds_cloud, fg_color=THEME["bg_card"], corner_radius=0)
 hdr_ds_cl.pack(fill="x", padx=14, pady=(10, 4))
 ctk.CTkLabel(hdr_ds_cl, text="☁️ B. FLUX DE TRANSFERT CLOUD INTER-USINES (UPLOAD / DOWNLOAD D'OBJETS SUR LE RÉSEAU)", font=ctk.CTkFont(size=13, weight="bold"), text_color=THEME["text_main"]).pack(side="left")
 def ajouter_ds_flux_ui():
@@ -2916,12 +2967,12 @@ def ajouter_ds_flux_ui():
     cartes_ds_flux.append(c)
     declencher_calcul()
 ctk.CTkButton(hdr_ds_cl, text="+ Ajouter un Flux Upload / Download", corner_radius=8, fg_color="#065F46", text_color="#FFFFFF", command=ajouter_ds_flux_ui).pack(side="right")
-frame_ds_flux_list = ctk.CTkFrame(card_ds_cloud, fg_color=THEME["bg_card"])
+frame_ds_flux_list = ctk.CTkFrame(card_ds_cloud, fg_color=THEME["bg_card"], corner_radius=0)
 frame_ds_flux_list.pack(fill="x", padx=6, pady=(4, 10))
 # ==============================================================================
 # 13. ONGLET 4 : AUTO-SOLVEUR DE DÉFICITS (MATÉRIAUX + ÉNERGIE) & GÉNÉRATEUR D'USINE
 # ==============================================================================
-scroll_auto = FrameDefilantOptimise(tab_auto, fg_color=THEME["bg_panel"])
+scroll_auto = ctk.CTkScrollableFrame(tab_auto, fg_color=THEME["bg_panel"])
 scroll_auto.pack(fill="both", expand=True, padx=6, pady=6)
 def ajouter_ou_fusionner_atelier_dans_usine(nom_usine_cible, machine, type_rec, nom_recette, qte_ajout, cad_str, somers_str="0"):
     u_cible = usines_data[nom_usine_cible]
@@ -3130,7 +3181,7 @@ def construire_onglet_auto():
     paliers = generer_paliers_cadence()
     card_def = ctk.CTkFrame(scroll_auto, fg_color=THEME["bg_card"], border_color=THEME["tab_sel"], border_width=2, corner_radius=12)
     card_def.pack(fill="x", padx=8, pady=(6, 12))
-    hdr_def = ctk.CTkFrame(card_def, fg_color=THEME["bg_card"])
+    hdr_def = ctk.CTkFrame(card_def, fg_color=THEME["bg_card"], corner_radius=0)
     hdr_def.pack(fill="x", padx=14, pady=(12, 6))
     ctk.CTkLabel(hdr_def, text="⚡ OUTIL 1 : RÉSOLVEUR DE DÉFICITS MATÉRIELS & ÉNERGÉTIQUES", font=ctk.CTkFont(size=14, weight="bold"), text_color=THEME["text_main"]).pack(side="left")
     ctk.CTkButton(hdr_def, text="🚀 TOUT RÉSOUDRE EN CASCADE (MATÉRIAUX + ÉNERGIE)", height=32, corner_radius=8, fg_color=THEME["tab_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=resoudre_tous_les_deficits_en_cascade).pack(side="right")
@@ -3144,7 +3195,7 @@ def construire_onglet_auto():
     menu_filiere_def_elec_global = ctk.CTkOptionMenu(bar_cad_def, values=list(FILIERES_ENERGIE.keys()), width=270, fg_color=THEME["bg_card"], button_color=THEME["tab_sel"], text_color=THEME["text_main"], command=lambda _: rafraichir_liste_deficits_ui())
     menu_filiere_def_elec_global.pack(side="left", padx=4, pady=8)
     menu_filiere_def_elec_global.set("💧 Centrale au Carburant Dilué (Optimisé - 250 MW)")
-    frame_liste_deficits_dyn = ctk.CTkFrame(card_def, fg_color=THEME["bg_card"])
+    frame_liste_deficits_dyn = ctk.CTkFrame(card_def, fg_color=THEME["bg_card"], corner_radius=0)
     frame_liste_deficits_dyn.pack(fill="x", padx=6, pady=(4, 12))
     # Générateur d'Usine sur Objectif
     card_gen = ctk.CTkFrame(scroll_auto, fg_color=THEME["bg_card"], border_color=THEME["seg_sel"], border_width=2, corner_radius=12)
@@ -3218,7 +3269,7 @@ def construire_onglet_auto():
         charger_usine_dans_ui(nom_cible)
         tabs.set("🏭 1. ATELIERS")
         popup_success("Usine Générée !", f"L'usine '{nom_cible}' et son dossier dans Documents ont été générés !")
-    bar_b = ctk.CTkFrame(card_gen, fg_color=THEME["bg_card"])
+    bar_b = ctk.CTkFrame(card_gen, fg_color=THEME["bg_card"], corner_radius=0)
     bar_b.pack(fill="x", padx=14, pady=(4, 12))
     ctk.CTkButton(bar_b, text="🔍 PRÉVISUALISER L'ARBRE", height=38, corner_radius=10, fg_color=THEME["seg_sel"], text_color="#FFFFFF", command=previsualiser_usine_auto).pack(side="left", expand=True, fill="x", padx=(0, 6))
     ctk.CTkButton(bar_b, text="🚀 GÉNÉRER L'USINE COMPLÈTE", height=38, corner_radius=10, fg_color="#065F46", text_color="#FFFFFF", command=executer_generation_usine_auto).pack(side="right", expand=True, fill="x", padx=(6, 0))
@@ -3227,7 +3278,7 @@ def construire_onglet_auto():
 # ==============================================================================
 # 14. ONGLET 6 : LABORATOIRE DE MODS (AVEC CHOIX DU TYPE DE MACHINE & SUPPRESSION)
 # ==============================================================================
-scroll_mods = FrameDefilantOptimise(tab_mods, fg_color=THEME["bg_panel"])
+scroll_mods = ctk.CTkScrollableFrame(tab_mods, fg_color=THEME["bg_panel"])
 scroll_mods.pack(fill="both", expand=True, padx=6, pady=6)
 def reinitialiser_tous_les_mods():
     if not popup_askyesno("Réinitialisation Complète", "Supprimer toutes les machines/recettes moddées et restaurer les valeurs Vanilla ?"):
@@ -3385,7 +3436,7 @@ def construire_onglet_mods():
     ctk.CTkButton(row_m1, text="🗑️ Supprimer / Restaurer", corner_radius=8, fg_color="#991B1B", hover_color="#7F1D1D", text_color="#FFFFFF", command=lambda: supprimer_ou_restaurer_machine_specifique(combo_mod_machine.get().strip())).pack(side="right", padx=(4, 10), pady=8)
     ctk.CTkButton(row_m1, text="💾 Enregistrer Machine", corner_radius=8, fg_color="#065F46", hover_color="#047857", text_color="#FFFFFF", command=enregistrer_machine_mod).pack(side="right", padx=4, pady=8)
     machines_modifiees = [m for m in sorted(MODS_CONFIG["machines_custom"].keys()) if est_machine_modifiee_ou_creee(m)]
-    frame_liste_mach_custom = ctk.CTkFrame(card_mods_mach, fg_color=THEME["bg_card"])
+    frame_liste_mach_custom = ctk.CTkFrame(card_mods_mach, fg_color=THEME["bg_card"], corner_radius=0)
     frame_liste_mach_custom.pack(fill="x", padx=14, pady=(4, 12))
     ctk.CTkLabel(frame_liste_mach_custom, text="📋 Machines personnalisées ou modifiées actives :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_muted"]).pack(anchor="w", pady=(2, 4))
     if not machines_modifiees:
@@ -3422,12 +3473,25 @@ def construire_onglet_mods():
     ctk.CTkCheckBox(f_rec_top, text="Recette Alternative", variable=var_rec_alt, text_color=THEME["text_main"]).pack(side="left", padx=12)
     f_rec_io = ctk.CTkFrame(card_mods_rec, fg_color=THEME["bg_card_alt"], corner_radius=8)
     f_rec_io.pack(fill="x", padx=14, pady=4)
+    ctk.CTkLabel(
+        card_mods_rec,
+        text="Clique sur « Choisir... » pour rechercher une ressource du jeu ou des recettes moddées. Tu peux aussi ajouter explicitement une nouvelle ressource.",
+        text_color=THEME["text_muted"], wraplength=950, justify="left"
+    ).pack(anchor="w", padx=16, pady=(0, 4))
     entrees_widgets = []
     for i in range(4):
         ctk.CTkLabel(f_rec_io, text=f"Entrée {i+1} :", text_color=THEME["text_main"]).grid(row=0, column=i*2, padx=(8, 2), pady=6, sticky="e")
-        f_pair = ctk.CTkFrame(f_rec_io, fg_color=THEME["bg_card_alt"])
+        f_pair = ctk.CTkFrame(f_rec_io, fg_color=THEME["bg_card_alt"], corner_radius=0)
         f_pair.grid(row=0, column=i*2+1, padx=(0, 8), pady=6)
-        e_nom = ctk.CTkEntry(f_pair, width=120, fg_color=THEME["bg_card"], text_color=THEME["text_main"], placeholder_text="Objet")
+        e_nom = ctk.CTkButton(
+            f_pair, width=120, height=28, text=PLACEHOLDER_RESSOURCE,
+            fg_color=THEME["bg_card"], hover_color=THEME["tab_sel"],
+            text_color=THEME["text_main"]
+        )
+        e_nom.configure(command=lambda bouton=e_nom: ouvrir_selecteur_ressource(
+            f_rec_io, valeur_selecteur_ressource(bouton),
+            lambda nom: bouton.configure(text=nom)
+        ))
         e_nom.pack(side="left", padx=2)
         e_qte = ctk.CTkEntry(f_pair, width=50, fg_color=THEME["bg_card"], text_color=THEME["text_main"], placeholder_text="/min")
         e_qte.pack(side="left", padx=2)
@@ -3435,9 +3499,17 @@ def construire_onglet_mods():
     sorties_widgets = []
     for i in range(2):
         ctk.CTkLabel(f_rec_io, text=f"Sortie {i+1} :", text_color=THEME["text_main"]).grid(row=1, column=i*2, padx=(8, 2), pady=6, sticky="e")
-        f_pair = ctk.CTkFrame(f_rec_io, fg_color=THEME["bg_card_alt"])
+        f_pair = ctk.CTkFrame(f_rec_io, fg_color=THEME["bg_card_alt"], corner_radius=0)
         f_pair.grid(row=1, column=i*2+1, padx=(0, 8), pady=6)
-        s_nom = ctk.CTkEntry(f_pair, width=120, fg_color=THEME["bg_card"], text_color=THEME["text_main"], placeholder_text="Objet produit")
+        s_nom = ctk.CTkButton(
+            f_pair, width=120, height=28, text=PLACEHOLDER_RESSOURCE,
+            fg_color=THEME["bg_card"], hover_color=THEME["tab_sel"],
+            text_color=THEME["text_main"]
+        )
+        s_nom.configure(command=lambda bouton=s_nom: ouvrir_selecteur_ressource(
+            f_rec_io, valeur_selecteur_ressource(bouton),
+            lambda nom: bouton.configure(text=nom)
+        ))
         s_nom.pack(side="left", padx=2)
         s_qte = ctk.CTkEntry(f_pair, width=50, fg_color=THEME["bg_card"], text_color=THEME["text_main"], placeholder_text="/min")
         s_qte.pack(side="left", padx=2)
@@ -3445,25 +3517,39 @@ def construire_onglet_mods():
     def ajouter_recette_moddee():
         nom_r = ent_rec_nom.get().strip()
         bat_r = combo_rec_bat.get().strip()
-        if not nom_r or not sorties_widgets[0][0].get().strip():
+        if not nom_r or not valeur_selecteur_ressource(sorties_widgets[0][0]):
             popup_warning("Champs requis", "Indiquez au moins un nom de recette et la Sortie 1.")
             return
         if var_rec_alt.get() and not nom_r.lower().startswith("recette alternative"):
             nom_r = f"Recette alternative : {nom_r}"
-        nouvelle = {"Nom de la recette": nom_r, "Objet de base": sorties_widgets[0][0].get().strip(), "Bâtiment": bat_r}
+        nouvelle = {
+            "Nom de la recette": nom_r,
+            "Objet de base": valeur_selecteur_ressource(sorties_widgets[0][0]),
+            "Bâtiment": bat_r
+        }
         try:
             for i in range(4):
-                n_in = entrees_widgets[i][0].get().strip()
+                n_in = valeur_selecteur_ressource(entrees_widgets[i][0])
                 q_in = entrees_widgets[i][1].get().strip().replace(",", ".")
                 nouvelle[f"Entrée {i+1}"] = n_in if n_in else None
                 nouvelle[f"Entrée {i+1} / Min"] = float(q_in) if (n_in and q_in) else 0.0
             for i in range(2):
-                n_out = sorties_widgets[i][0].get().strip()
+                n_out = valeur_selecteur_ressource(sorties_widgets[i][0])
                 q_out = sorties_widgets[i][1].get().strip().replace(",", ".")
                 nouvelle[f"Sortie {i+1}"] = n_out if n_out else None
                 nouvelle[f"Sortie {i+1} / Min"] = float(q_out) if (n_out and q_out) else 0.0
         except ValueError:
             popup_error("Erreur", "Les débits (/min) doivent être des nombres valides.")
+            return
+        ressources_valides = set(liste_ressources_disponibles())
+        noms_inconnus = sorted({
+            nouvelle[f"{prefixe} {index}"]
+            for prefixe, maximum in (("Entrée", 4), ("Sortie", 2))
+            for index in range(1, maximum + 1)
+            if nouvelle.get(f"{prefixe} {index}") and nouvelle[f"{prefixe} {index}"] not in ressources_valides
+        })
+        if noms_inconnus:
+            popup_error("Ressource inconnue", f"Choisis une ressource existante : {', '.join(noms_inconnus)}.")
             return
         MODS_CONFIG["recettes_custom"].append(nouvelle)
         sauvegarder_mods()
@@ -3483,10 +3569,10 @@ def construire_onglet_mods():
         charger_usine_dans_ui(usine_active_nom)
         construire_onglet_mods()
         construire_onglet_auto()
-    f_rec_act = ctk.CTkFrame(card_mods_rec, fg_color=THEME["bg_card"])
+    f_rec_act = ctk.CTkFrame(card_mods_rec, fg_color=THEME["bg_card"], corner_radius=0)
     f_rec_act.pack(fill="x", padx=14, pady=(4, 8))
     ctk.CTkButton(f_rec_act, text="+ Enregistrer cette Recette Moddée", corner_radius=8, fg_color="#065F46", text_color="#FFFFFF", font=ctk.CTkFont(size=12, weight="bold"), command=ajouter_recette_moddee).pack(side="left")
-    frame_liste_rec_custom = ctk.CTkFrame(card_mods_rec, fg_color=THEME["bg_card"])
+    frame_liste_rec_custom = ctk.CTkFrame(card_mods_rec, fg_color=THEME["bg_card"], corner_radius=0)
     frame_liste_rec_custom.pack(fill="x", padx=14, pady=(4, 12))
     for r_c in MODS_CONFIG["recettes_custom"]:
         nom_rc = r_c["Nom de la recette"]
@@ -3498,7 +3584,7 @@ def construire_onglet_mods():
 # ==============================================================================
 # 14B. ONGLET 7 : CATALOGUE DES RECETTES, STACKS & CALCULATEUR COFFRES / TRAINS ➔ DS DRIVE
 # ==============================================================================
-scroll_recettes = FrameDefilantOptimise(tab_recettes, fg_color=THEME["bg_panel"])
+scroll_recettes = ctk.CTkScrollableFrame(tab_recettes, fg_color=THEME["bg_panel"])
 scroll_recettes.pack(fill="both", expand=True, padx=6, pady=6)
 
 def construire_onglet_recettes():
@@ -3508,7 +3594,7 @@ def construire_onglet_recettes():
     card_cout = ctk.CTkFrame(scroll_recettes, fg_color=THEME["bg_card"], border_color=THEME["status_ok"], border_width=2, corner_radius=12)
     card_cout.pack(fill="x", padx=8, pady=6)
     ctk.CTkLabel(card_cout, text="🏗️ COMBIEN DE MATÉRIAUX POUR CONSTRUIRE L'USINE ?", font=ctk.CTkFont(size=14, weight="bold"), text_color=THEME["text_main"]).pack(anchor="w", padx=14, pady=(10, 2))
-    ctk.CTkLabel(card_cout, text="Tu écris ce qu'il faut pour construire un bâtiment. L'appli multiplie ensuite par le nombre de bâtiments. Exemple : 3 béton pour 104 constructeurs = 312 béton.", wraplength=950, justify="left", text_color=THEME["text_muted"]).pack(anchor="w", padx=14, pady=(0, 8))
+    ctk.CTkLabel(card_cout, text="Choisis les matériaux dans la liste des ressources du jeu ou des recettes moddées. L'appli multiplie ensuite leur quantité par le nombre de bâtiments. Exemple : 3 béton pour 104 constructeurs = 312 béton.", wraplength=950, justify="left", text_color=THEME["text_muted"]).pack(anchor="w", padx=14, pady=(0, 8))
     batiments_cout = sorted(set(
         list(MODS_CONFIG["machines_custom"].keys()) + list(liste_machines_extraction)
         + [f"Foreuse {tier}" for tier in ("Mk.1", "Mk.2", "Mk.3")]
@@ -3537,11 +3623,11 @@ def construire_onglet_recettes():
     ent_nb_couts.insert(0, "1")
     ent_nb_couts.grid(row=0, column=3, padx=(3, 10), pady=6)
     champs_couts = []
-    frame_champs_couts = ctk.CTkFrame(card_cout, fg_color=THEME["bg_card"])
+    frame_champs_couts = ctk.CTkFrame(card_cout, fg_color=THEME["bg_card"], corner_radius=0)
     frame_champs_couts.pack(fill="x", padx=14, pady=(4, 8))
     lbl_cout_batiment = ctk.CTkLabel(card_cout, text="", justify="left", anchor="w", text_color=THEME["text_main"], font=ctk.CTkFont(family="Consolas", size=11))
     lbl_cout_batiment.pack(fill="x", padx=14, pady=(4, 2))
-    row_actions_cout = ctk.CTkFrame(card_cout, fg_color=THEME["bg_card"])
+    row_actions_cout = ctk.CTkFrame(card_cout, fg_color=THEME["bg_card"], corner_radius=0)
     row_actions_cout.pack(fill="x", padx=14, pady=(4, 8))
     for column in range(3):
         row_actions_cout.grid_columnconfigure(column, weight=1, uniform="actions")
@@ -3584,7 +3670,7 @@ def construire_onglet_recettes():
             fg_color=THEME["bg_card"], text_color=THEME["text_main"]
         )
         recherche_batiments.grid(row=1, column=0, padx=14, pady=(2, 8), sticky="ew")
-        liste_batiments = FrameDefilantOptimise(
+        liste_batiments = ctk.CTkScrollableFrame(
             fenetre, fg_color=THEME["bg_card"], corner_radius=8
         )
         liste_batiments.grid(row=2, column=0, padx=14, pady=(0, 14), sticky="nsew")
@@ -3615,7 +3701,7 @@ def construire_onglet_recettes():
 
     def valeurs_champs_couts():
         return [
-            (champ_nom.get().strip(), champ_qte.get().strip())
+            (valeur_selecteur_ressource(champ_nom), champ_qte.get().strip())
             for champ_nom, champ_qte in champs_couts
         ]
 
@@ -3639,13 +3725,22 @@ def construire_onglet_recettes():
             ligne = ctk.CTkFrame(frame_champs_couts, fg_color=THEME["bg_card_alt"], corner_radius=6)
             ligne.pack(fill="x", pady=2)
             ctk.CTkLabel(ligne, text=f"Matériau {index + 1} :", width=115, anchor="w", text_color=THEME["text_main"]).pack(side="left", padx=(8, 3), pady=5)
-            champ_nom = ctk.CTkEntry(ligne, width=240, placeholder_text="Ex. Béton", fg_color=THEME["bg_card"], text_color=THEME["text_main"])
+            champ_nom = ctk.CTkButton(
+                ligne, width=240, height=28, text=PLACEHOLDER_RESSOURCE,
+                anchor="w", fg_color=THEME["bg_card"],
+                hover_color=THEME["tab_sel"], text_color=THEME["text_main"]
+            )
+            champ_nom.configure(command=lambda bouton=champ_nom, parent_ligne=ligne: ouvrir_selecteur_ressource(
+                parent_ligne, valeur_selecteur_ressource(bouton),
+                lambda nom: bouton.configure(text=nom)
+            ))
             champ_nom.pack(side="left", padx=4, pady=5)
             ctk.CTkLabel(ligne, text="Qté / bâtiment :", text_color=THEME["text_main"]).pack(side="left", padx=(8, 3))
             champ_qte = ctk.CTkEntry(ligne, width=90, justify="center", fg_color=THEME["bg_card"], text_color=THEME["text_main"])
             champ_qte.pack(side="left", padx=4, pady=5)
             if index < len(valeurs):
-                champ_nom.insert(0, str(valeurs[index][0]))
+                nom_initial = str(valeurs[index][0])
+                champ_nom.configure(text=nom_initial if nom_initial else PLACEHOLDER_RESSOURCE)
                 champ_qte.insert(0, str(valeurs[index][1]))
             champs_couts.append((champ_nom, champ_qte))
 
@@ -3664,14 +3759,15 @@ def construire_onglet_recettes():
             popup_warning("Information manquante", "Choisis un bâtiment et crée au moins une ligne de matériau.")
             return
         recette = {}
+        ressources_valides = set(liste_ressources_disponibles())
         for champ_nom, champ_qte in champs_couts:
-            nom_materiau = champ_nom.get().strip()
+            nom_materiau = valeur_selecteur_ressource(champ_nom)
             try:
                 quantite = float(champ_qte.get().strip().replace(",", "."))
             except ValueError:
                 popup_error("Quantité incorrecte", "Écris une quantité valide pour chaque matériau, par exemple 3 ou 2,5.")
                 return
-            if not nom_materiau or quantite <= 0:
+            if not nom_materiau or nom_materiau not in ressources_valides or quantite <= 0:
                 popup_warning("Information manquante", "Chaque ligne doit avoir un matériau et une quantité supérieure à zéro.")
                 return
             recette[nom_materiau] = recette.get(nom_materiau, 0.0) + quantite
@@ -3708,7 +3804,7 @@ def construire_onglet_recettes():
         text_color=THEME["text_main"],
         command=lambda: popup_info(
             "Petite aide",
-            "Choisis un bâtiment dans la liste déroulante. Ensuite, choisis le nombre de matériaux et crée les lignes. Exemple : 2 matériaux affichent deux lignes avec leur nom et leur quantité."
+            "Choisis un bâtiment dans la liste déroulante. Choisis ensuite le nombre de matériaux, crée les lignes, puis sélectionne chaque ressource dans la liste. Pour une ressource de mod absente, cherche son nom et ajoute-la comme ressource personnalisée. Exemple : 2 matériaux affichent deux lignes avec leur nom et leur quantité."
         )
     ).grid(row=0, column=3, sticky="e", padx=(4, 0))
     afficher_cout_batiment()
@@ -3719,16 +3815,20 @@ def construire_onglet_recettes():
 
     r_c = ctk.CTkFrame(card_calc, fg_color=THEME["bg_card_alt"], corner_radius=8)
     r_c.pack(fill="x", padx=14, pady=6)
-    tous_obj = sorted(list(set(liste_objets_produits + list(STACKS_DEFAUT.keys()))))
+    tous_obj = liste_ressources_disponibles()
     ctk.CTkLabel(r_c, text="Objet :", text_color=THEME["text_main"]).pack(side="left", padx=(10, 4), pady=8)
-    cb_obj = ctk.CTkComboBox(r_c, values=tous_obj, width=210, fg_color=THEME["bg_card"], text_color=THEME["text_main"])
-    cb_obj.pack(side="left", padx=4)
-    cb_obj.set("Vis" if "Vis" in tous_obj else tous_obj[0])
+    objet_stack_initial = "Vis" if "Vis" in tous_obj else tous_obj[0]
+    btn_obj = ctk.CTkButton(
+        r_c, text=objet_stack_initial, width=210, height=32,
+        fg_color=THEME["bg_card"], hover_color=THEME["tab_sel"],
+        text_color=THEME["text_main"]
+    )
+    btn_obj.pack(side="left", padx=4)
 
     ctk.CTkLabel(r_c, text="Taille Stack :", text_color=THEME["text_main"]).pack(side="left", padx=(10, 4))
     ent_st = ctk.CTkEntry(r_c, width=65, justify="center", fg_color=THEME["bg_card"], text_color=THEME["text_main"])
     ent_st.pack(side="left", padx=4)
-    ent_st.insert(0, str(get_stack_objet(cb_obj.get())))
+    ent_st.insert(0, str(get_stack_objet(objet_stack_initial)))
 
     ctk.CTkLabel(r_c, text="Conteneur cible :", text_color=THEME["text_main"]).pack(side="left", padx=(10, 4))
     seg_cont = ctk.CTkSegmentedButton(r_c, values=["Simple Coffre (24 slots)", "Double Coffre (48 slots)", "Wagon Train (32 slots)"], fg_color=THEME["bg_panel"], selected_color=THEME["seg_sel"], text_color="#FFFFFF")
@@ -3744,7 +3844,7 @@ def construire_onglet_recettes():
     lbl_res_calc.pack(fill="x", padx=14, pady=(4, 10))
 
     def maj_calcul_stack(*_):
-        nom_o = cb_obj.get().strip()
+        nom_o = btn_obj.cget("text").strip()
         try:
             st_val = max(int(ent_st.get().strip()), 1)
         except ValueError:
@@ -3766,11 +3866,14 @@ def construire_onglet_recettes():
         )
 
     def on_select_obj_stack(choix):
+        btn_obj.configure(text=choix)
         ent_st.delete(0, "end")
         ent_st.insert(0, str(get_stack_objet(choix)))
         maj_calcul_stack()
 
-    cb_obj.configure(command=on_select_obj_stack)
+    btn_obj.configure(command=lambda: ouvrir_selecteur_ressource(
+        r_c, btn_obj.cget("text"), on_select_obj_stack
+    ))
     seg_cont.configure(command=maj_calcul_stack)
     ent_st.bind("<KeyRelease>", maj_calcul_stack)
     ent_deb_tr.bind("<KeyRelease>", maj_calcul_stack)
@@ -3779,7 +3882,7 @@ def construire_onglet_recettes():
     # Catalogue filtrable des recettes du jeu
     card_cat = ctk.CTkFrame(scroll_recettes, fg_color=THEME["bg_card"], border_color=THEME["border"], border_width=1, corner_radius=12)
     card_cat.pack(fill="both", expand=True, padx=8, pady=6)
-    r_flt = ctk.CTkFrame(card_cat, fg_color=THEME["bg_card"])
+    r_flt = ctk.CTkFrame(card_cat, fg_color=THEME["bg_card"], corner_radius=0)
     r_flt.pack(fill="x", padx=14, pady=(10, 4))
     ctk.CTkLabel(r_flt, text="📚 CATALOGUE DES RECETTES DU JEU & DES MODS (Rechercher un produit ou bâtiment) :", font=ctk.CTkFont(size=13, weight="bold"), text_color=THEME["text_main"]).pack(side="left")
     ent_search_rec = ctk.CTkEntry(r_flt, width=260, placeholder_text="🔍 Filtrer (ex: Acier, Raffinerie, Turbo...)", fg_color=THEME["bg_card_alt"], text_color=THEME["text_main"])
@@ -3885,7 +3988,7 @@ def sauvegarder_wiki():
     except Exception:
         pass
 
-frame_wiki_main = ctk.CTkFrame(tab_wiki, fg_color=THEME["bg_panel"])
+frame_wiki_main = ctk.CTkFrame(tab_wiki, fg_color=THEME["bg_panel"], corner_radius=0)
 frame_wiki_main.pack(fill="both", expand=True, padx=6, pady=6)
 
 def construire_onglet_wiki():
@@ -3966,7 +4069,7 @@ box_pwr_telemetry = ctk.CTkFrame(cockpit, fg_color=THEME["bg_card"], corner_radi
 box_pwr_telemetry.pack(fill="x", padx=14, pady=6)
 lignes_telemetrie_refs = []
 def creer_ligne_telemetrie(parent, titre, couleur_val):
-    row = ctk.CTkFrame(parent, fg_color=THEME["bg_card"])
+    row = ctk.CTkFrame(parent, fg_color=THEME["bg_card"], corner_radius=0)
     row.pack(fill="x", padx=12, pady=3)
     lbl_t = ctk.CTkLabel(row, text=titre, font=ctk.CTkFont(size=12), text_color=THEME["text_muted"])
     lbl_t.pack(side="left")
@@ -3982,7 +4085,7 @@ jauge_reseau.pack(fill="x", padx=12, pady=(8, 4))
 jauge_reseau.set(0.0)
 lbl_statut_reseau = ctk.CTkLabel(box_pwr_telemetry, text="⚪ Réseau en attente", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"))
 lbl_statut_reseau.pack(padx=12, pady=(0, 10))
-bar_portee = ctk.CTkFrame(cockpit, fg_color=THEME["bg_panel"])
+bar_portee = ctk.CTkFrame(cockpit, fg_color=THEME["bg_panel"], corner_radius=0)
 bar_portee.pack(fill="x", padx=14, pady=(4, 2))
 lbl_portee_analyse = ctk.CTkLabel(bar_portee, text="Portée d'analyse :", font=ctk.CTkFont(size=12, weight="bold"), text_color=THEME["text_main"])
 lbl_portee_analyse.pack(side="left")
@@ -4007,20 +4110,20 @@ lbl_kpi_somers = creer_kpi(1, "🌀 SOMERSLOOPS")
 lbl_kpi_batiments = creer_kpi(2, "🏭 BÂTIMENTS")
 box_resume_machines = ctk.CTkFrame(cockpit, fg_color=THEME["bg_card"], corner_radius=8)
 box_resume_machines.pack(fill="x", padx=14, pady=(0, 5))
-row_resume_machines = ctk.CTkFrame(box_resume_machines, fg_color=THEME["bg_card"])
+row_resume_machines = ctk.CTkFrame(box_resume_machines, fg_color=THEME["bg_card"], corner_radius=0)
 row_resume_machines.pack(fill="x", padx=8, pady=(4, 0))
 ctk.CTkLabel(row_resume_machines, text="Combien de chaque bâtiment ?", font=ctk.CTkFont(size=11, weight="bold"), text_color=THEME["text_main"]).pack(side="left")
 ajouter_bouton_aide(row_resume_machines, "Ici, tu vois le nombre de chaque type de bâtiment dans l'usine choisie. Le grand nombre au-dessus compte tout.")
 lbl_resume_machines = ctk.CTkTextbox(box_resume_machines, height=72, wrap="word", fg_color=THEME["bg_card_alt"], text_color=THEME["text_main"], font=ctk.CTkFont(family="Consolas", size=10))
 lbl_resume_machines.pack(fill="x", padx=8, pady=(2, 6))
 lbl_resume_machines.configure(state="disabled")
-flux_header = ctk.CTkFrame(cockpit, fg_color=THEME["bg_panel"])
+flux_header = ctk.CTkFrame(cockpit, fg_color=THEME["bg_panel"], corner_radius=0)
 flux_header.pack(fill="x", padx=14, pady=(8, 4))
 lbl_bilan_flux_hdr = ctk.CTkLabel(flux_header, text="📊 BILAN NET DES FLUX (/MIN)", font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), text_color=THEME["text_main"])
 lbl_bilan_flux_hdr.pack(side="left")
 seg_filtre_bilan = ctk.CTkSegmentedButton(flux_header, values=["Tous", "Déficits 🔴", "Surplus 🟢"], variable=filtre_bilan_var, fg_color=THEME["bg_card_alt"], selected_color=THEME["seg_sel"], text_color="#FFFFFF", font=ctk.CTkFont(size=11, weight="bold"), command=declencher_calcul)
 seg_filtre_bilan.pack(side="right")
-scroll_flux = FrameDefilantOptimise(cockpit, fg_color=THEME["bg_card_alt"], corner_radius=10)
+scroll_flux = ctk.CTkScrollableFrame(cockpit, fg_color=THEME["bg_card_alt"], corner_radius=10)
 scroll_flux.pack(fill="both", expand=True, padx=14, pady=(4, 14))
 lbl_flux_global = ctk.CTkFrame(scroll_flux, fg_color=THEME["bg_card_alt"], corner_radius=8)
 lbl_flux_global.pack(fill="x", padx=4, pady=4)
@@ -4162,7 +4265,7 @@ def ouvrir_fenetre_options():
     f_tab.pack(fill="x", padx=20, pady=8)
     lbl_2 = ctk.CTkLabel(f_tab, text="2. Couleur des Onglets Sélectionnés :", font=ctk.CTkFont(size=13, weight="bold"), text_color=THEME["text_main"])
     lbl_2.pack(anchor="w", padx=14, pady=(10, 4))
-    row_t = ctk.CTkFrame(f_tab, fg_color=THEME["bg_card"])
+    row_t = ctk.CTkFrame(f_tab, fg_color=THEME["bg_card"], corner_radius=0)
     row_t.pack(fill="x", padx=14, pady=(4, 12))
     def chg_preset_tab(nom_p):
         USER_SETTINGS["tab_selected_color"] = COULEURS_PRESETS[nom_p]
@@ -4183,7 +4286,7 @@ def ouvrir_fenetre_options():
     f_seg.pack(fill="x", padx=20, pady=8)
     lbl_3 = ctk.CTkLabel(f_seg, text="3. Couleur des Boutons de Cadence Sélectionnés :", font=ctk.CTkFont(size=13, weight="bold"), text_color=THEME["text_main"])
     lbl_3.pack(anchor="w", padx=14, pady=(10, 4))
-    row_s = ctk.CTkFrame(f_seg, fg_color=THEME["bg_card"])
+    row_s = ctk.CTkFrame(f_seg, fg_color=THEME["bg_card"], corner_radius=0)
     row_s.pack(fill="x", padx=14, pady=(4, 12))
     def chg_preset_seg(nom_p):
         USER_SETTINGS["seg_selected_color"] = COULEURS_PRESETS[nom_p]
