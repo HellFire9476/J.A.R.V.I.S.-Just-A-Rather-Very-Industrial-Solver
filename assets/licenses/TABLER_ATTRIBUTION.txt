@@ -1,0 +1,7 @@
+﻿Tabler Icons
+Version : 3.51.0
+Source : https://github.com/tabler/tabler-icons
+Licence : MIT
+
+Les fichiers SVG de ce dossier proviennent de Tabler Icons.
+La licence MIT originale est conservee dans TABLER_LICENSE.txt.

@@ -1,28 +1,18 @@
-# Python
-__pycache__/
+﻿__pycache__/
 *.py[cod]
+*.egg-info/
 .venv/
 venv/
-
-# Local editor settings
-.vscode/
-
-# Build output
-build/
-dist/
-*.exe
-*.msi
-
-# Local configuration and secrets
 .env
-.env.*
-mods_config.json
+.idea/
+.vscode/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
 
-# Archived application versions and local reference material
-main[2-9].py
-main1[0-8].py
-Digital storage.txt
-
-# Operating system files
-Thumbs.db
-.DS_Store
+# Donnees personnelles
+user_data/
+saves/
+backups/
+logs/
