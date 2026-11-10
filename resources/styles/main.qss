@@ -339,3 +339,48 @@ QPushButton#SecondarySmallButton:hover {
     background-color: #334657;
     color: #FFFFFF;
 }
+
+
+
+/* ==========================================
+   J.A.R.V.I.S. 2.0
+   INDUSTRIAL PARK MANAGER
+   ========================================== */
+
+QFrame#ParkIconBadge {
+    background-color: #342D25;
+    border: 1px solid #75552F;
+    border-radius: 8px;
+}
+
+QLabel#ParkIconLabel {
+    color: #F5B568;
+    font-size: 18pt;
+    font-weight: 800;
+}
+
+QPushButton#DangerSmallButton {
+    background-color: #38272A;
+    color: #E7A2A5;
+    border: 1px solid #634044;
+    border-radius: 5px;
+    padding: 8px 17px;
+}
+
+QPushButton#DangerSmallButton:hover {
+    background-color: #563337;
+    color: #FFFFFF;
+}
+
+QPushButton#DangerSmallButton:pressed {
+    background-color: #6A3B3F;
+}
+
+QMessageBox {
+    background-color: #1B2631;
+}
+
+QMessageBox QLabel {
+    color: #E6EDF3;
+    background-color: transparent;
+}

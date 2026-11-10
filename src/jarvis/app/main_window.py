@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from jarvis.app.navigation import PlaceholderPage
 from jarvis.domain.entities.project import Project
 from jarvis.presentation.pages.dashboard.page import DashboardPage
+from jarvis.presentation.pages.parks.page import ParksPage
 from jarvis.presentation.pages.projects.page import ProjectPage
 from jarvis.presentation.widgets.sidebar import Sidebar
 
@@ -20,10 +21,6 @@ class MainWindow(QMainWindow):
     """Fenêtre principale de J.A.R.V.I.S."""
 
     PAGE_INFO = {
-        "parks": (
-            "Parcs industriels",
-            "Gestion et organisation de vos parcs.",
-        ),
         "network": (
             "Réseau industriel",
             "Gestion des échanges entre installations.",
@@ -90,7 +87,7 @@ class MainWindow(QMainWindow):
 
         root_layout.addWidget(topbar)
 
-        # Zone principale
+        # Corps principal
         body = QWidget()
         body_layout = QHBoxLayout(body)
         body_layout.setContentsMargins(0, 0, 0, 0)
@@ -112,21 +109,24 @@ class MainWindow(QMainWindow):
         self._register_page("dashboard", dashboard)
 
         # Gestion des projets
-        projects_page = ProjectPage()
+        self.projects_page = ProjectPage()
 
-        projects_page.project_opened.connect(
+        self.projects_page.project_opened.connect(
             self._activate_project
         )
 
-        projects_page.project_updated.connect(
+        self.projects_page.project_updated.connect(
             self._update_active_project
         )
 
-        self._register_page("projects", projects_page)
+        self._register_page("projects", self.projects_page)
 
-        self.projects_page = projects_page
+        # Gestion des parcs industriels
+        self.parks_page = ParksPage()
 
-        # Modules industriels
+        self._register_page("parks", self.parks_page)
+
+        # Modules encore en construction
         for page_id, (title, description) in self.PAGE_INFO.items():
             page = PlaceholderPage(title, description)
             self._register_page(page_id, page)
@@ -153,10 +153,8 @@ class MainWindow(QMainWindow):
         if page is None:
             return
 
-        industrial_pages = set(self.PAGE_INFO)
+        industrial_pages = set(self.PAGE_INFO) | {"parks"}
 
-        # Un projet doit être ouvert avant d'accéder
-        # aux fonctionnalités industrielles.
         if (
             page_id in industrial_pages
             and self.active_project is None
@@ -170,8 +168,11 @@ class MainWindow(QMainWindow):
         if page_id == "projects":
             self.projects_page.refresh()
 
+        elif page_id == "parks":
+            self.parks_page.refresh()
+
     def _open_parks_from_dashboard(self):
-        """Dirige vers les parcs ou vers les projets."""
+        """Accède aux parcs ou à la gestion des projets."""
 
         if self.active_project is None:
             self.show_page("projects")
@@ -179,9 +180,11 @@ class MainWindow(QMainWindow):
             self.show_page("parks")
 
     def _activate_project(self, project: Project):
-        """Définit la partie actuellement ouverte."""
+        """Active une partie Satisfactory."""
 
         self.active_project = project
+
+        self.parks_page.set_project(project)
 
         self.project_status.setText(
             f"●  {project.name.upper()}"
@@ -196,13 +199,14 @@ class MainWindow(QMainWindow):
         self.show_page("dashboard")
 
     def _update_active_project(self, project: Project):
-        """Actualise l'affichage après modification."""
+        """Actualise une partie après modification."""
 
         if (
             self.active_project is not None
             and self.active_project.id == project.id
         ):
             self.active_project = project
+            self.parks_page.set_project(project)
 
             self.project_status.setText(
                 f"●  {project.name.upper()}"
