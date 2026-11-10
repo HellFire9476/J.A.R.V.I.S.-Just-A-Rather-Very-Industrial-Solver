@@ -16,6 +16,7 @@ New-Item -ItemType Directory -Force -Path $LicenseDir | Out-Null
 # Liste des icones necessaires
 $Icons = @(
     "layout-dashboard",
+    "folder",
     "building-factory-2",
     "hierarchy-2",
     "shovel",

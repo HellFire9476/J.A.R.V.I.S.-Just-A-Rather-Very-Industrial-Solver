@@ -9,37 +9,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from jarvis.app.navigation import PlaceholderPage
+from jarvis.domain.entities.project import Project
 from jarvis.presentation.pages.dashboard.page import DashboardPage
+from jarvis.presentation.pages.projects.page import ProjectPage
 from jarvis.presentation.widgets.sidebar import Sidebar
 
 
-class PlaceholderPage(QWidget):
-    """Page temporaire en attendant le développement du module."""
-
-    def __init__(self, title: str, description: str):
-        super().__init__()
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(35, 35, 35, 35)
-        layout.setSpacing(12)
-
-        title_label = QLabel(title)
-        title_label.setObjectName("PageTitle")
-
-        description_label = QLabel(description)
-        description_label.setObjectName("PageSubtitle")
-
-        status = QLabel("MODULE EN CONSTRUCTION")
-        status.setObjectName("Eyebrow")
-
-        layout.addWidget(title_label)
-        layout.addWidget(description_label)
-        layout.addSpacing(15)
-        layout.addWidget(status)
-        layout.addStretch()
-
-
 class MainWindow(QMainWindow):
+    """Fenêtre principale de J.A.R.V.I.S."""
 
     PAGE_INFO = {
         "parks": (
@@ -48,7 +26,7 @@ class MainWindow(QMainWindow):
         ),
         "network": (
             "Réseau industriel",
-            "Gestion des échanges entre vos installations.",
+            "Gestion des échanges entre installations.",
         ),
         "extraction": (
             "Extraction",
@@ -70,6 +48,8 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        self.active_project: Project | None = None
 
         self.setWindowTitle(
             "J.A.R.V.I.S. — Just A Rather Very Industrial Solver"
@@ -99,16 +79,18 @@ class MainWindow(QMainWindow):
         version = QLabel("J.A.R.V.I.S. 2.0  /  ALPHA 1")
         version.setObjectName("TopbarVersion")
 
-        project = QLabel("●  AUCUN PROJET CHARGÉ")
-        project.setObjectName("TopbarProject")
+        self.project_status = QLabel(
+            "●  AUCUN PROJET CHARGÉ"
+        )
+        self.project_status.setObjectName("TopbarProject")
 
         topbar_layout.addWidget(version)
         topbar_layout.addStretch()
-        topbar_layout.addWidget(project)
+        topbar_layout.addWidget(self.project_status)
 
         root_layout.addWidget(topbar)
 
-        # Corps de l'application
+        # Zone principale
         body = QWidget()
         body_layout = QHBoxLayout(body)
         body_layout.setContentsMargins(0, 0, 0, 0)
@@ -122,18 +104,32 @@ class MainWindow(QMainWindow):
 
         # Tableau de bord
         dashboard = DashboardPage()
+
         dashboard.open_parks_requested.connect(
-            lambda: self.show_page("parks")
+            self._open_parks_from_dashboard
         )
 
-        self.pages["dashboard"] = dashboard
-        self.page_stack.addWidget(dashboard)
+        self._register_page("dashboard", dashboard)
 
-        # Autres modules temporaires
+        # Gestion des projets
+        projects_page = ProjectPage()
+
+        projects_page.project_opened.connect(
+            self._activate_project
+        )
+
+        projects_page.project_updated.connect(
+            self._update_active_project
+        )
+
+        self._register_page("projects", projects_page)
+
+        self.projects_page = projects_page
+
+        # Modules industriels
         for page_id, (title, description) in self.PAGE_INFO.items():
             page = PlaceholderPage(title, description)
-            self.pages[page_id] = page
-            self.page_stack.addWidget(page)
+            self._register_page(page_id, page)
 
         body_layout.addWidget(self.sidebar)
         body_layout.addWidget(self.page_stack, 1)
@@ -143,11 +139,77 @@ class MainWindow(QMainWindow):
         self.sidebar.set_active("dashboard")
         self.show_page("dashboard")
 
+    def _register_page(self, page_id: str, page: QWidget):
+        """Enregistre une page dans la navigation."""
+
+        self.pages[page_id] = page
+        self.page_stack.addWidget(page)
+
     def show_page(self, page_id: str):
+        """Affiche la rubrique demandée."""
+
         page = self.pages.get(page_id)
 
         if page is None:
             return
 
+        industrial_pages = set(self.PAGE_INFO)
+
+        # Un projet doit être ouvert avant d'accéder
+        # aux fonctionnalités industrielles.
+        if (
+            page_id in industrial_pages
+            and self.active_project is None
+        ):
+            page_id = "projects"
+            page = self.pages[page_id]
+
         self.page_stack.setCurrentWidget(page)
         self.sidebar.set_active(page_id)
+
+        if page_id == "projects":
+            self.projects_page.refresh()
+
+    def _open_parks_from_dashboard(self):
+        """Dirige vers les parcs ou vers les projets."""
+
+        if self.active_project is None:
+            self.show_page("projects")
+        else:
+            self.show_page("parks")
+
+    def _activate_project(self, project: Project):
+        """Définit la partie actuellement ouverte."""
+
+        self.active_project = project
+
+        self.project_status.setText(
+            f"●  {project.name.upper()}"
+        )
+
+        self.sidebar.set_active_project(project.name)
+
+        self.setWindowTitle(
+            f"J.A.R.V.I.S. — {project.name}"
+        )
+
+        self.show_page("dashboard")
+
+    def _update_active_project(self, project: Project):
+        """Actualise l'affichage après modification."""
+
+        if (
+            self.active_project is not None
+            and self.active_project.id == project.id
+        ):
+            self.active_project = project
+
+            self.project_status.setText(
+                f"●  {project.name.upper()}"
+            )
+
+            self.sidebar.set_active_project(project.name)
+
+            self.setWindowTitle(
+                f"J.A.R.V.I.S. — {project.name}"
+            )

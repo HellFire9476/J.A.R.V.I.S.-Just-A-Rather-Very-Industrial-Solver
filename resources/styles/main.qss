@@ -234,3 +234,108 @@ QToolTip {
     border: 1px solid #485B6E;
     padding: 6px;
 }
+
+
+/* ==========================================
+   PROJECT MANAGER
+   ========================================== */
+
+QFrame#ProjectCard {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 9px;
+}
+
+QFrame#ProjectCard:hover {
+    border: 1px solid #52677A;
+    background-color: #202D39;
+}
+
+QFrame#EmptyProjectsCard {
+    background-color: #1B2631;
+    border: 1px dashed #425264;
+    border-radius: 10px;
+}
+
+QLabel#ProjectTitle {
+    color: #F1F4F7;
+    font-size: 13pt;
+    font-weight: 700;
+}
+
+QLabel#ProjectDescription {
+    color: #AEBBC8;
+    font-size: 9pt;
+}
+
+QLabel#ProjectMetadata {
+    color: #8293A3;
+    font-size: 8pt;
+}
+
+QLabel#ProjectCardIcon {
+    color: #EAA04A;
+    font-size: 25pt;
+    font-weight: 600;
+}
+
+QLabel#EmptyProjectIcon {
+    color: #EAA04A;
+    font-size: 30pt;
+}
+
+QScrollArea#ProjectScrollArea {
+    background-color: transparent;
+    border: none;
+}
+
+QWidget#ProjectContainer {
+    background-color: transparent;
+}
+
+QLineEdit#FormInput,
+QTextEdit#FormInput {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 5px;
+    padding: 9px;
+    selection-background-color: #B87930;
+}
+
+QLineEdit#FormInput:focus,
+QTextEdit#FormInput:focus {
+    border: 1px solid #E99536;
+}
+
+QLabel#DialogTitle {
+    color: #F2F5F8;
+    font-size: 17pt;
+    font-weight: 700;
+}
+
+QPushButton#PrimarySmallButton {
+    background-color: #E99536;
+    color: #171D24;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 17px;
+    font-weight: 700;
+}
+
+QPushButton#PrimarySmallButton:hover {
+    background-color: #F3AA53;
+}
+
+QPushButton#SecondarySmallButton {
+    background-color: #263441;
+    color: #BBC7D2;
+    border: 1px solid #3A4B5C;
+    border-radius: 5px;
+    padding: 8px 17px;
+}
+
+QPushButton#SecondarySmallButton:hover {
+    background-color: #334657;
+    color: #FFFFFF;
+}

@@ -29,6 +29,7 @@ class Sidebar(QWidget):
         ("energy", "bolt", "Énergie"),
         ("recipes", "book-2", "Recettes"),
         ("simulations", "flask-2", "Simulations"),
+        ("projects", "folder", "Mes projets"),
     ]
 
     def __init__(self, parent=None):
@@ -166,12 +167,12 @@ class Sidebar(QWidget):
         project_label = QLabel("PROJET ACTIF")
         project_label.setObjectName("SectionLabel")
 
-        project_name = QLabel("Aucun projet ouvert")
-        project_name.setObjectName("ProjectName")
-        project_name.setWordWrap(True)
+        self.project_name_label = QLabel("Aucun projet ouvert")
+        self.project_name_label.setObjectName("ProjectName")
+        self.project_name_label.setWordWrap(True)
 
         layout.addWidget(project_label)
-        layout.addWidget(project_name)
+        layout.addWidget(self.project_name_label)
 
     def _update_icon(self, page_id: str, checked: bool):
         """Actualise la couleur de l'icône."""
@@ -195,3 +196,10 @@ class Sidebar(QWidget):
 
         if button:
             button.setChecked(True)
+
+    def set_active_project(self, name: str | None):
+        """Actualise le nom du projet actif dans la navigation."""
+
+        self.project_name_label.setText(
+            name if name else "Aucun projet ouvert"
+        )
