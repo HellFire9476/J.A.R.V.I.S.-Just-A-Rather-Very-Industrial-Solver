@@ -38,6 +38,7 @@ USER_DATA_DIR = Path.home() / "Documents" / "J.A.R.V.I.S."
 
 PROJECTS_DIR = USER_DATA_DIR / "Projects"
 ARCHIVES_DIR = USER_DATA_DIR / "Archives"
+CATALOG_DIR = USER_DATA_DIR / "Catalog"
 
 SETTINGS_DIR = USER_DATA_DIR / "Settings"
 LOGS_DIR = USER_DATA_DIR / "Logs"
