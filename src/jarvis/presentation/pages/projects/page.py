@@ -24,6 +24,7 @@ class ProjectPage(QWidget):
 
     project_opened = Signal(object)
     project_updated = Signal(object)
+    project_deleted = Signal(object)
 
     def __init__(
         self,
@@ -112,6 +113,10 @@ class ProjectPage(QWidget):
             widget = item.widget()
 
             if widget is not None:
+                # Masque immédiatement l'ancien widget : deleteLater()
+                # attend le prochain cycle Qt et peut laisser une carte
+                # fantôme visible lors de rafraîchissements rapprochés.
+                widget.hide()
                 widget.deleteLater()
 
     def refresh(self):
@@ -260,8 +265,22 @@ class ProjectPage(QWidget):
             self.edit_project(pid)
         )
 
+        archive_button = QPushButton("Archiver")
+        archive_button.setObjectName("SecondarySmallButton")
+        archive_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        archive_button.setToolTip(
+            "Déplacer cette partie dans le centre d'archives. "
+            "Elle pourra être restaurée ultérieurement."
+        )
+
+        archive_button.clicked.connect(
+            lambda checked=False, pid=project.id:
+            self.archive_project(pid)
+        )
+
         actions.addWidget(open_button)
         actions.addWidget(edit_button)
+        actions.addWidget(archive_button)
 
         card_layout.addLayout(actions)
 
@@ -342,4 +361,65 @@ class ProjectPage(QWidget):
                 self,
                 "Modification impossible",
                 f"Impossible de modifier cette partie :\n{error}",
+            )
+
+
+
+    def archive_project(self, project_id: UUID):
+        """Archive une partie active en conservant toutes ses données."""
+
+        try:
+            project = self.service.get_project(project_id)
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "Projet introuvable",
+                f"Impossible de récupérer ce projet :\n{error}",
+            )
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Archiver cette partie ?",
+            (
+                f"Archiver la partie :\n\n"
+                f"{project.name}\n\n"
+                "Toutes ses données seront déplacées dans le centre "
+                "d'archives de J.A.R.V.I.S.\n\n"
+                "La partie ne figurera plus dans tes projets actifs, "
+                "mais tu pourras la restaurer à tout moment depuis "
+                "le Centre d'archives.\n\n"
+                "Souhaites-tu continuer ?"
+            ),
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            self.service.delete_project(project_id)
+
+            self.refresh()
+            self.project_deleted.emit(project_id)
+
+            QMessageBox.information(
+                self,
+                "Projet archivé",
+                (
+                    f"La partie « {project.name} » a été retirée "
+                    "de tes projets actifs.\n\n"
+                    "Toutes ses données ont été conservées "
+                    "dans les archives."
+                ),
+            )
+
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "Archivage impossible",
+                f"Impossible d'archiver le projet :\n{error}",
             )

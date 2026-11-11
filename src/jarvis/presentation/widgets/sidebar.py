@@ -30,6 +30,7 @@ class Sidebar(QWidget):
         ("recipes", "book-2", "Recettes"),
         ("simulations", "flask-2", "Simulations"),
         ("projects", "folder", "Mes projets"),
+        ("archives", "folder", "Centre d'archives"),
     ]
 
     def __init__(self, parent=None):

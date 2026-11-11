@@ -384,3 +384,216 @@ QMessageBox QLabel {
     color: #E6EDF3;
     background-color: transparent;
 }
+
+
+/* ==========================================
+   CENTRE D'ARCHIVES
+   ========================================== */
+
+QFrame#ArchivePanel {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 9px;
+}
+
+QFrame#ArchiveMetricCard {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 8px;
+}
+
+QLabel#ArchiveMetricLabel {
+    color: #8FA0B0;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#ArchiveMetricValue {
+    color: #F1F4F7;
+    font-size: 19pt;
+    font-weight: 700;
+}
+
+QLabel#ArchiveMutedLabel {
+    color: #8293A3;
+    font-size: 8pt;
+}
+
+QLabel#ArchiveInfo {
+    background-color: #202D39;
+    color: #B8C4CF;
+    border: 1px solid #354555;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 9pt;
+}
+
+QLabel#ArchiveInfo b {
+    color: #F2F5F8;
+    font-size: 10pt;
+}
+
+QLabel#ArchiveEmptyLabel {
+    color: #8FA0B0;
+    padding: 25px;
+}
+
+QTableWidget#ArchiveTable,
+QTreeWidget#ArchiveTree {
+    background-color: #151F29;
+    alternate-background-color: #192531;
+    color: #DCE4EB;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    selection-background-color: #3B3022;
+    selection-color: #F5B568;
+    outline: none;
+}
+
+QTableWidget#ArchiveTable::item,
+QTreeWidget#ArchiveTree::item {
+    padding: 5px;
+    border: none;
+}
+
+QTableWidget#ArchiveTable::item:selected,
+QTreeWidget#ArchiveTree::item:selected {
+    background-color: #3B3022;
+    color: #F5B568;
+}
+
+QHeaderView::section {
+    background-color: #202D39;
+    color: #91A2B2;
+    border: none;
+    border-bottom: 1px solid #354555;
+    padding: 8px 7px;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLineEdit#ArchiveSearch,
+QComboBox#ArchiveFilter {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 5px;
+    padding: 8px 10px;
+    min-height: 20px;
+}
+
+QLineEdit#ArchiveSearch:focus,
+QComboBox#ArchiveFilter:focus {
+    border: 1px solid #E99536;
+}
+
+QComboBox#ArchiveFilter QAbstractItemView {
+    background-color: #202D39;
+    color: #E6EDF3;
+    selection-background-color: #3B3022;
+}
+
+QTabWidget#ArchivePreviewTabs::pane {
+    background-color: #151F29;
+    border: 1px solid #2D3A48;
+    border-radius: 5px;
+    top: -1px;
+}
+
+QTabBar::tab {
+    background-color: #202D39;
+    color: #9BAAB8;
+    border: 1px solid #2D3A48;
+    padding: 7px 13px;
+    margin-right: 3px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+QTabBar::tab:selected {
+    background-color: #342D25;
+    color: #F5B568;
+    border-bottom-color: #342D25;
+}
+
+QScrollArea#ArchiveSummaryScroll {
+    background-color: #151F29;
+    border: 1px solid #2D3A48;
+    border-radius: 5px;
+}
+
+QLabel#ArchiveSummary {
+    background-color: #151F29;
+    color: #C9D5DF;
+    padding: 14px 16px;
+    font-size: 10pt;
+}
+
+QPlainTextEdit#ArchiveJsonPreview {
+    background-color: #151F29;
+    color: #C9D5DF;
+    border: none;
+    padding: 10px;
+    selection-background-color: #75552F;
+    font-family: Consolas, "Cascadia Code", monospace;
+    font-size: 9pt;
+}
+
+QPushButton#DangerSmallButton:disabled,
+QPushButton#PrimarySmallButton:disabled {
+    background-color: #26313B;
+    color: #687786;
+    border: 1px solid #354555;
+}
+
+
+/* ==========================================
+   CENTRE D'ARCHIVES — VUES SIMPLIFIÉE / AVANCÉE
+   ========================================== */
+
+QPushButton#ArchiveModeButton {
+    background-color: #202D39;
+    color: #AEBBC8;
+    border: 1px solid #3A4B5C;
+    border-radius: 5px;
+    padding: 7px 12px;
+    min-height: 24px;
+    font-weight: 600;
+}
+
+QPushButton#ArchiveModeButton:hover {
+    background-color: #2B3B49;
+    color: #F1F4F7;
+}
+
+QPushButton#ArchiveModeButton:checked {
+    background-color: #3B3022;
+    color: #F5B568;
+    border: 1px solid #A56D32;
+}
+
+QFrame#ArchiveCard {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 9px;
+}
+
+QFrame#ArchiveCard:hover {
+    border: 1px solid #52677A;
+    background-color: #202D39;
+}
+
+QLabel#ArchiveCardIcon {
+    color: #EAA04A;
+    font-size: 25pt;
+    font-weight: 600;
+}
+
+QScrollArea#ArchiveSimpleScrollArea {
+    background-color: transparent;
+    border: none;
+}
+
+QWidget#ArchiveSimpleContainer {
+    background-color: transparent;
+}

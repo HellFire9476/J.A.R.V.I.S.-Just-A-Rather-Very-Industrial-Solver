@@ -1,4 +1,3 @@
-
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -6,6 +5,9 @@ from uuid import UUID
 
 from jarvis.config.paths import PROJECTS_DIR
 from jarvis.domain.entities.park import Park
+from jarvis.infrastructure.persistence.archive_repository import (
+    ArchiveRepository,
+)
 from jarvis.infrastructure.persistence.atomic_writer import (
     write_json_atomic,
 )
@@ -15,8 +17,18 @@ from jarvis.infrastructure.persistence.json_store import read_json
 class ParkRepository:
     """Gestion physique des parcs industriels en JSON."""
 
-    def __init__(self, projects_dir: Path = PROJECTS_DIR):
+    def __init__(
+        self,
+        projects_dir: Path = PROJECTS_DIR,
+        archive_repository: ArchiveRepository | None = None,
+    ):
         self.projects_dir = Path(projects_dir)
+
+        # Le dépôt des parcs et celui des projets partagent ce dossier.
+        archive_root = self.projects_dir.parent / "Archives"
+        self.archive_repository = (
+            archive_repository or ArchiveRepository(archive_root)
+        )
 
     def _project_directory(self, project_id: UUID) -> Path:
         return self.projects_dir / str(project_id)
@@ -39,7 +51,6 @@ class ParkRepository:
 
     def _read_index(self, project_id: UUID) -> dict:
         index_file = self._index_file(project_id)
-
         data = read_json(index_file)
 
         if not isinstance(data, dict):
@@ -55,7 +66,9 @@ class ParkRepository:
             raise ValueError("Structure de l'index des parcs invalide.")
 
         if len(park_ids) != len(set(park_ids)):
-            raise ValueError("L'index contient des identifiants dupliqués.")
+            raise ValueError(
+                "L'index contient des identifiants dupliqués."
+            )
 
         for park_id in park_ids:
             try:
@@ -82,7 +95,6 @@ class ParkRepository:
         """Récupère un parc précis."""
 
         self._ensure_project_exists(project_id)
-
         index = self._read_index(project_id)
 
         if str(park_id) not in index["park_ids"]:
@@ -93,7 +105,6 @@ class ParkRepository:
         park_file = (
             self._park_directory(project_id, park_id) / "park.json"
         )
-
         park = read_json(park_file, Park)
 
         if park.id != park_id or park.project_id != project_id:
@@ -107,7 +118,6 @@ class ParkRepository:
         """Retourne tous les parcs d'un projet."""
 
         self._ensure_project_exists(project_id)
-
         index = self._read_index(project_id)
 
         parks = [
@@ -124,7 +134,6 @@ class ParkRepository:
         """Crée un parc et actualise son index."""
 
         self._ensure_project_exists(park.project_id)
-
         index = self._read_index(park.project_id)
 
         if str(park.id) in index["park_ids"]:
@@ -189,37 +198,24 @@ class ParkRepository:
         project_id: UUID,
         park_id: UUID,
     ) -> None:
-        """Archive un parc avant de le retirer de son index."""
+        """Archive un parc dans le système central d'archives."""
 
-        self.get(project_id, park_id)
-
+        park = self.get(project_id, park_id)
         index = self._read_index(project_id)
-
         park_directory = self._park_directory(
             project_id,
             park_id,
         )
 
-        timestamp = datetime.now(UTC).strftime(
-            "%Y%m%d_%H%M%S_%f"
-        )
-
-        archive_directory = (
-            self._project_directory(project_id)
-            / "backups"
-            / "deleted_parks"
-            / f"{park_id}_{timestamp}"
-        )
-
-        archive_directory.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        # Déplacement réversible de l'installation.
-        shutil.move(
-            str(park_directory),
-            str(archive_directory),
+        record = self.archive_repository.archive(
+            source_path=park_directory,
+            entity_type="park",
+            entity_id=park.id,
+            entity_name=park.name,
+            original_location=(
+                f"Projects/{project_id}/parks/{park_id}"
+            ),
+            parent_project_id=project_id,
         )
 
         try:
@@ -231,17 +227,9 @@ class ParkRepository:
             )
 
         except Exception:
-            # Restauration en cas d'échec de l'index.
-            park_directory.parent.mkdir(
-                parents=True,
-                exist_ok=True,
+            # Si l'index ne peut pas être actualisé, restaurer le parc.
+            self.archive_repository.restore(
+                record.archive_id,
+                park_directory,
             )
-
-            shutil.move(
-                str(archive_directory),
-                str(park_directory),
-            )
-
             raise
-
-        return None

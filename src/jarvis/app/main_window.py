@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 
 from jarvis.app.navigation import PlaceholderPage
 from jarvis.domain.entities.project import Project
+from jarvis.presentation.pages.archives.page import ArchivesPage
 from jarvis.presentation.pages.dashboard.page import DashboardPage
 from jarvis.presentation.pages.parks.page import ParksPage
 from jarvis.presentation.pages.projects.page import ProjectPage
@@ -119,12 +120,20 @@ class MainWindow(QMainWindow):
             self._update_active_project
         )
 
+        self.projects_page.project_deleted.connect(
+            self._handle_project_deleted
+        )
+
         self._register_page("projects", self.projects_page)
 
         # Gestion des parcs industriels
         self.parks_page = ParksPage()
 
         self._register_page("parks", self.parks_page)
+
+        # Centre d'archives
+        self.archives_page = ArchivesPage()
+        self._register_page("archives", self.archives_page)
 
         # Modules encore en construction
         for page_id, (title, description) in self.PAGE_INFO.items():
@@ -170,6 +179,9 @@ class MainWindow(QMainWindow):
 
         elif page_id == "parks":
             self.parks_page.refresh()
+
+        elif page_id == "archives":
+            self.archives_page.refresh()
 
     def _open_parks_from_dashboard(self):
         """Accède aux parcs ou à la gestion des projets."""
@@ -217,3 +229,33 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(
                 f"J.A.R.V.I.S. — {project.name}"
             )
+
+
+
+    def _handle_project_deleted(self, project_id):
+        """Ferme la session si la partie archivée était active."""
+
+        if (
+            self.active_project is not None
+            and self.active_project.id == project_id
+        ):
+            self.active_project = None
+            self.parks_page.set_project(None)
+
+            self.project_status.setText(
+                "●  AUCUN PROJET CHARGÉ"
+            )
+
+            self.sidebar.set_active_project(None)
+
+            self.setWindowTitle(
+                "J.A.R.V.I.S. — Just A Rather Very Industrial Solver"
+            )
+
+        # ProjectPage.archive_project() a déjà rafraîchi sa liste avant
+        # d'émettre project_deleted. Ne pas rappeler show_page("projects") :
+        # show_page relancerait un second refresh immédiat et laisserait les
+        # anciens widgets visibles jusqu'au traitement de deleteLater().
+        if self.page_stack.currentWidget() is not self.projects_page:
+            self.page_stack.setCurrentWidget(self.projects_page)
+            self.sidebar.set_active("projects")

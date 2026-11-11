@@ -46,3 +46,12 @@ class ProjectService:
         """Enregistre les modifications d'une partie."""
 
         return self.repository.save(project)
+
+
+    def delete_project(self, project_id: UUID):
+        """
+        Supprime un projet de la liste active.
+        Les données sont conservées dans les archives.
+        """
+
+        return self.repository.archive(project_id)

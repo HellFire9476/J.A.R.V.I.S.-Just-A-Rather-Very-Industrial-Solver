@@ -169,6 +169,10 @@ class ParksPage(QWidget):
             widget = item.widget()
 
             if widget is not None:
+                # Masque immédiatement l'ancien widget : deleteLater()
+                # attend le prochain cycle Qt et peut laisser une carte
+                # fantôme visible lors de rafraîchissements rapprochés.
+                widget.hide()
                 widget.deleteLater()
 
     def refresh(self):
