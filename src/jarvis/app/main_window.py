@@ -10,16 +10,20 @@ from PySide6.QtWidgets import (
 )
 
 from jarvis.app.navigation import PlaceholderPage
+from jarvis.application.services.recipe_service import RecipeService
 from jarvis.domain.entities.project import Project
 from jarvis.presentation.pages.archives.page import ArchivesPage
 from jarvis.presentation.pages.dashboard.page import DashboardPage
 from jarvis.presentation.pages.parks.page import ParksPage
 from jarvis.presentation.pages.projects.page import ProjectPage
+from jarvis.presentation.pages.recipes.page import RecipesPage
 from jarvis.presentation.widgets.sidebar import Sidebar
 
 
 class MainWindow(QMainWindow):
     """Fenêtre principale de J.A.R.V.I.S."""
+
+    PROJECT_REQUIRED_PAGES = {"parks", "network", "extraction", "energy", "simulations"}
 
     PAGE_INFO = {
         "network": (
@@ -33,10 +37,6 @@ class MainWindow(QMainWindow):
         "energy": (
             "Énergie",
             "Gestion de votre production énergétique.",
-        ),
-        "recipes": (
-            "Recettes",
-            "Catalogue des recettes et de leurs variantes.",
         ),
         "simulations": (
             "Simulations",
@@ -131,6 +131,10 @@ class MainWindow(QMainWindow):
 
         self._register_page("parks", self.parks_page)
 
+        # Catalogue Satisfactory : indépendant du projet actif.
+        self.recipes_page = RecipesPage(RecipeService())
+        self._register_page("recipes", self.recipes_page)
+
         # Centre d'archives
         self.archives_page = ArchivesPage()
         self._register_page("archives", self.archives_page)
@@ -162,10 +166,8 @@ class MainWindow(QMainWindow):
         if page is None:
             return
 
-        industrial_pages = set(self.PAGE_INFO) | {"parks"}
-
         if (
-            page_id in industrial_pages
+            page_id in self.PROJECT_REQUIRED_PAGES
             and self.active_project is None
         ):
             page_id = "projects"
@@ -182,6 +184,9 @@ class MainWindow(QMainWindow):
 
         elif page_id == "archives":
             self.archives_page.refresh()
+
+        elif page_id == "recipes":
+            self.recipes_page.refresh()
 
     def _open_parks_from_dashboard(self):
         """Accède aux parcs ou à la gestion des projets."""

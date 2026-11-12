@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 FORMAT_VERSION = 1
 
 # Champs dont les valeurs changent entre les exports de langues analysés.

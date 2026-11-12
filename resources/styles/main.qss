@@ -597,3 +597,103 @@ QScrollArea#ArchiveSimpleScrollArea {
 QWidget#ArchiveSimpleContainer {
     background-color: transparent;
 }
+
+/* ==========================================
+   SATISFACTORY CATALOG / RECIPES
+   ========================================== */
+
+QScrollArea#CatalogDetailScroll {
+    background-color: transparent;
+    border: none;
+}
+
+QFrame#CatalogSummary,
+QFrame#CatalogToolbar,
+QFrame#CatalogPanel {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 9px;
+}
+
+QLabel#CatalogSummaryValue {
+    color: #F5B568;
+    font-size: 12pt;
+    font-weight: 700;
+}
+
+QLabel#CatalogSummaryText,
+QLabel#CatalogMuted {
+    color: #8293A3;
+    font-size: 9pt;
+}
+
+QLineEdit#CatalogSearch,
+QComboBox#CatalogFilter {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 6px;
+    padding: 8px 10px;
+    min-height: 20px;
+}
+
+QLineEdit#CatalogSearch:focus,
+QComboBox#CatalogFilter:focus {
+    border: 1px solid #B87930;
+}
+
+QComboBox#CatalogFilter QAbstractItemView {
+    background-color: #1B2631;
+    color: #E6EDF3;
+    selection-background-color: #3B3022;
+    selection-color: #F5B568;
+    border: 1px solid #354555;
+}
+
+QTableView#CatalogTable {
+    background-color: #151F29;
+    alternate-background-color: #19242F;
+    color: #DCE5ED;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    selection-background-color: #3B3022;
+    selection-color: #F5B568;
+}
+
+QTableView#CatalogTable::item {
+    padding: 7px;
+    border: none;
+}
+
+QTableView#CatalogTable QHeaderView::section {
+    background-color: #202D39;
+    color: #9EAFBF;
+    border: none;
+    border-bottom: 1px solid #354555;
+    padding: 9px 7px;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#CatalogDetailTitle {
+    color: #F2F5F8;
+    font-size: 17pt;
+    font-weight: 700;
+}
+
+QLabel#CatalogDetailMetric {
+    color: #F5B568;
+    font-size: 10pt;
+    font-weight: 700;
+    padding: 7px 0;
+}
+
+QLabel#CatalogDetailText {
+    color: #D2DCE5;
+    font-size: 9pt;
+}
+
+QFrame#CatalogSeparator {
+    color: #354555;
+    max-height: 1px;
+}
