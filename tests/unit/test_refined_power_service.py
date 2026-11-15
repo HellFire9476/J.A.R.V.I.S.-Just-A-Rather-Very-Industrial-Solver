@@ -107,3 +107,12 @@ def test_update_rejects_changed_identifier(environment):
 
     with pytest.raises(ValueError, match="ne peut pas être modifié"):
         service.update_chain(project.id, park.id, chain.chain_id, changed)
+
+
+def test_preview_configuration_calculates_without_persisting(environment):
+    project, park, _, service, _, _ = environment
+
+    result = service.preview_configuration(sample_chain())
+
+    assert result.estimated_power_mw == 150
+    assert service.list_chains(project.id, park.id) == ()

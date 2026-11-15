@@ -915,3 +915,162 @@ QLabel#ModStateDisabled {
     font-size: 8pt;
     font-weight: 700;
 }
+
+/* ==========================================
+   REFINED POWER
+   ========================================== */
+
+QFrame#RPContextPanel,
+QFrame#RPPanel,
+QFrame#RPMetricCard {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 8px;
+}
+
+QScrollArea#RPScrollArea,
+QWidget#RPContent,
+QWidget#RPDetails {
+    background-color: transparent;
+    border: none;
+}
+
+QComboBox#RPHeaterSelector,
+QComboBox#RPFuelSelector,
+QComboBox#RPBoilerSelector,
+QComboBox#RPTurbineSelector,
+QComboBox#RPGeneratorSelector,
+QLineEdit#RPInput,
+QSpinBox#RPInput,
+QSpinBox#RPBoilerCount,
+QSpinBox#RPTurbineCount,
+QSpinBox#RPGeneratorCount,
+QSpinBox#RPChimneyCount,
+QSpinBox#RPCoolingTowerCount {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 5px;
+    padding: 6px 8px;
+    min-height: 20px;
+}
+
+QComboBox#RPHeaterSelector:focus,
+QComboBox#RPFuelSelector:focus,
+QComboBox#RPBoilerSelector:focus,
+QComboBox#RPTurbineSelector:focus,
+QComboBox#RPGeneratorSelector:focus,
+QLineEdit#RPInput:focus,
+QSpinBox#RPBoilerCount:focus,
+QSpinBox#RPTurbineCount:focus,
+QSpinBox#RPGeneratorCount:focus,
+QSpinBox#RPChimneyCount:focus,
+QSpinBox#RPCoolingTowerCount:focus {
+    border: 1px solid #E99536;
+}
+
+QComboBox#RPHeaterSelector QAbstractItemView,
+QComboBox#RPFuelSelector QAbstractItemView,
+QComboBox#RPBoilerSelector QAbstractItemView,
+QComboBox#RPTurbineSelector QAbstractItemView,
+QComboBox#RPGeneratorSelector QAbstractItemView {
+    background-color: #1B2631;
+    color: #E6EDF3;
+    selection-background-color: #3B3022;
+    selection-color: #F5B568;
+    border: 1px solid #354555;
+}
+
+QLabel#RPFieldLabel {
+    color: #8798A9;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#RPModeLabel {
+    color: #E9AA5E;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#RPStatus {
+    color: #9EAFBF;
+    font-size: 9pt;
+    padding: 2px 3px;
+}
+
+QLabel#RPModuleStateEnabled,
+QLabel#RPResultStateGood {
+    color: #65C99E;
+    background-color: #20352F;
+    border: 1px solid #35644F;
+    border-radius: 5px;
+    padding: 6px 9px;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#RPModuleStateDisabled,
+QLabel#RPResultStateWarning {
+    color: #E7B56D;
+    background-color: #352F25;
+    border: 1px solid #68502D;
+    border-radius: 5px;
+    padding: 6px 9px;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#RPResultState {
+    color: #8FA0B0;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QListWidget#RPChainList {
+    background-color: #151F29;
+    color: #DCE5ED;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    outline: none;
+}
+
+QListWidget#RPChainList::item {
+    padding: 10px 9px;
+    border-bottom: 1px solid #263441;
+}
+
+QListWidget#RPChainList::item:selected {
+    color: #F5B568;
+    background-color: #3B3022;
+}
+
+QLabel#RPFlowDetails {
+    color: #B7C4CF;
+    background-color: #151F29;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    padding: 11px;
+    font-size: 9pt;
+}
+
+QLabel#RPWarnings {
+    color: #D6AD76;
+    background-color: #2B2923;
+    border-left: 3px solid #B87930;
+    border-radius: 4px;
+    padding: 9px 11px;
+    font-size: 9pt;
+}
+
+QFrame#RPMetricCard {
+    background-color: #202D39;
+}
+
+QPushButton#PrimarySmallButton:disabled,
+QPushButton#SecondarySmallButton:disabled,
+QPushButton#DangerSmallButton:disabled {
+    color: #687888;
+    background-color: #202A34;
+    border-color: #303D49;
+}

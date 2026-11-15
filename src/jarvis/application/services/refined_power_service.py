@@ -60,6 +60,14 @@ class RefinedPowerService:
     ) -> tuple[RefinedPowerChainConfiguration, ...]:
         return self.get_configuration(project_id, park_id).chains
 
+    def preview_configuration(
+        self,
+        configuration: RefinedPowerChainConfiguration,
+    ) -> RefinedPowerChainResult:
+        """Calcule une configuration sans l'enregistrer dans un parc."""
+
+        return self.engine.calculate(configuration, self.get_catalog())
+
     def create_chain(
         self,
         project_id: UUID,

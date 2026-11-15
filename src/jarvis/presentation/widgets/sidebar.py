@@ -27,6 +27,7 @@ class Sidebar(QWidget):
         ("network", "hierarchy-2", "Réseau industriel"),
         ("extraction", "shovel", "Extraction"),
         ("energy", "bolt", "Énergie"),
+        ("refined_power", "factory", "Refined Power"),
         ("mods", "puzzle", "Mods & extensions"),
         ("recipes", "book-2", "Recettes"),
         ("simulations", "flask-2", "Simulations"),
@@ -104,7 +105,7 @@ class Sidebar(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(17, 25, 17, 18)
-        layout.setSpacing(9)
+        layout.setSpacing(7)
 
         # Identité
         brand = QLabel("J.A.R.V.I.S.")
@@ -144,7 +145,7 @@ class Sidebar(QWidget):
 
             button.setIcon(inactive_icon)
             button.setIconSize(QSize(20, 20))
-            button.setMinimumHeight(44)
+            button.setMinimumHeight(40)
 
             button.setToolTip(title)
 

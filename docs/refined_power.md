@@ -45,6 +45,28 @@ Structure de configuration :
 }
 ```
 
+## Interface de gestion Modular Power
+
+La rubrique **Refined Power** est accessible depuis la navigation principale. Elle permet
+de sélectionner une partie et un parc, puis de gérer les chaînes Modular Power associées
+à ce parc. Cette page ne crée ni partie ni parc et n'active pas automatiquement le mod.
+
+Lorsque Refined Power est désactivé sur le parc, les chaînes existantes restent visibles
+en lecture seule. Le bouton **Gérer les modules** ouvre la rubrique Mods & extensions sur
+la partie et le parc actuellement sélectionnés. L'activation reste une action explicite.
+
+Lorsque le module est actif, l'interface permet de créer, modifier, dupliquer et supprimer
+une chaîne homogène. Le bilan est prévisualisé à mesure que les paramètres changent, sans
+enregistrement automatique. L'enregistrement valide d'abord la configuration avec le moteur,
+puis passe par `RefinedPowerService`.
+
+Les résultats affichent la puissance, le combustible, l'eau, le régime de turbine, les flux
+de vapeur haute et basse pression, le CO₂, les sous-produits et les avertissements du moteur.
+L'interface ne recalcule pas elle-même les règles métier.
+
+La page ne couvre pour le moment que **Modular Power**. Elle n'intègre pas encore les
+sources directes, les réacteurs, Project Icarus ni le bilan énergétique global du parc.
+
 ## Sources documentaires
 
 - [Page du mod Refined Power](https://ficsit.app/mod/RefinedPower)

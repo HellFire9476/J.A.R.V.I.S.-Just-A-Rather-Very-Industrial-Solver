@@ -37,6 +37,7 @@ class ModsPage(QWidget):
         self.project_service = project_service or ProjectService()
         self.project: Project | None = None
         self._preferred_project_id: UUID | None = None
+        self._preferred_park_id: UUID | None = None
         self._projects_by_id: dict[str, Project] = {}
         self._selected_park_id: UUID | None = None
 
@@ -152,6 +153,17 @@ class ModsPage(QWidget):
         self._preferred_project_id = project.id if project else None
         self.refresh()
 
+    def set_target(
+        self,
+        project: Project | None,
+        park_id: UUID | None = None,
+    ) -> None:
+        """Préselectionne une partie et un parc avant d'ouvrir cette page."""
+
+        self._preferred_project_id = project.id if project else None
+        self._preferred_park_id = park_id
+        self.refresh()
+
     def refresh(self) -> None:
         """Recharge les parties, les parcs et le catalogue des modules."""
 
@@ -164,8 +176,9 @@ class ModsPage(QWidget):
             if preferred_project_id is not None
             else current_project_id
         )
-        previous_park_id = self._selected_park_id
+        previous_park_id = self._preferred_park_id or self._selected_park_id
         self._preferred_project_id = None
+        self._preferred_park_id = None
 
         self.project_combo.blockSignals(True)
         self.project_combo.clear()
