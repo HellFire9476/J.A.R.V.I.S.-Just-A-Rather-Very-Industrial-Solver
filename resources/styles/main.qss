@@ -1074,3 +1074,194 @@ QPushButton#DangerSmallButton:disabled {
     background-color: #202A34;
     border-color: #303D49;
 }
+
+
+/* ==========================================
+   REFINED POWER - EQUILIBRAGE AUTOMATIQUE
+   ========================================== */
+
+QTabWidget#RPTabs::pane {
+    background-color: #151F29;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    top: -1px;
+}
+
+QTabWidget#RPTabs QTabBar::tab {
+    background-color: #202D39;
+    color: #9BAAB8;
+    border: 1px solid #2D3A48;
+    padding: 8px 14px;
+    margin-right: 3px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+QTabWidget#RPTabs QTabBar::tab:selected {
+    background-color: #342D25;
+    color: #F5B568;
+    border-bottom-color: #342D25;
+}
+
+QComboBox#RPOModeSelector,
+QComboBox#RPOReferenceSelector,
+QComboBox#RPOProfileSelector,
+QDoubleSpinBox#RPOTargetPower,
+QSpinBox#RPOEquipmentLimit {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 5px;
+    padding: 6px 8px;
+    min-height: 20px;
+}
+
+QComboBox#RPOModeSelector:focus,
+QComboBox#RPOReferenceSelector:focus,
+QComboBox#RPOProfileSelector:focus,
+QDoubleSpinBox#RPOTargetPower:focus,
+QSpinBox#RPOEquipmentLimit:focus {
+    border: 1px solid #E99536;
+}
+
+QLabel#RPOIntro,
+QLabel#RPOptimizerStatus,
+QLabel#RPOptimizerSummary {
+    color: #B7C4CF;
+    font-size: 9pt;
+    padding: 5px 3px;
+}
+
+QLabel#RPOptimizerSubheading {
+    color: #E9AA5E;
+    font-size: 8pt;
+    font-weight: 700;
+    padding-top: 5px;
+}
+
+QListWidget#RPOChangesList {
+    background-color: #151F29;
+    color: #DCE5ED;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    outline: none;
+}
+
+QListWidget#RPOChangesList::item {
+    padding: 8px 9px;
+    border-bottom: 1px solid #263441;
+}
+
+QLabel#RPOptimizerConstraints {
+    color: #E7B56D;
+    background-color: #29271F;
+    border-left: 3px solid #B87930;
+    border-radius: 4px;
+    padding: 9px 11px;
+    font-size: 9pt;
+}
+
+QLabel#RPOptimizerWarnings {
+    color: #A9C7B8;
+    background-color: #20332D;
+    border-left: 3px solid #4E9874;
+    border-radius: 4px;
+    padding: 9px 11px;
+    font-size: 9pt;
+}
+
+QPushButton#RPApplyOptimizationButton {
+    color: #15231D;
+    background-color: #65C99E;
+    border: 1px solid #65C99E;
+    border-radius: 5px;
+    padding: 7px 13px;
+    font-weight: 700;
+}
+
+QPushButton#RPApplyOptimizationButton:hover {
+    background-color: #7AD8AE;
+    border-color: #7AD8AE;
+}
+
+QPushButton#RPApplyOptimizationButton:disabled {
+    color: #687888;
+    background-color: #202A34;
+    border-color: #303D49;
+}
+
+
+/* ==========================================
+   REFINED POWER - AIDE ET TUTORIEL
+   ========================================== */
+
+QFrame#RPOHelpPanel {
+    background-color: #202D39;
+    border: 1px solid #3A4B5B;
+    border-left: 3px solid #D98A35;
+    border-radius: 7px;
+}
+
+QLabel#RPOHelpDescription {
+    color: #F0F4F7;
+    font-size: 10pt;
+    font-weight: 600;
+}
+
+QLabel#RPOHelpExample {
+    color: #B9C7D3;
+    font-size: 9pt;
+    padding: 3px 0 5px 0;
+}
+
+QToolButton#RPOTutorialToggle {
+    color: #F2B66D;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-weight: 700;
+    padding: 5px 0;
+}
+
+QToolButton#RPOTutorialToggle:hover {
+    color: #FFD39B;
+}
+
+QFrame#RPOTutorialPanel {
+    background-color: #17232D;
+    border: 1px solid #354757;
+    border-radius: 5px;
+}
+
+QLabel#RPOHelpHeading {
+    color: #E9AA5E;
+    font-size: 8pt;
+    font-weight: 700;
+    padding-bottom: 3px;
+}
+
+QLabel#RPOHelpStep {
+    color: #D5DFE7;
+    font-size: 9pt;
+    padding: 2px 0;
+}
+
+QLabel#RPOHelpGlossary {
+    color: #9FB0BF;
+    font-size: 8pt;
+    border-top: 1px solid #354757;
+    padding-top: 7px;
+}
+
+QComboBox#RPLocaleSelector {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 5px;
+    padding: 6px 8px;
+    min-height: 20px;
+}
+
+QComboBox#RPLocaleSelector:focus {
+    border: 1px solid #E99536;
+}

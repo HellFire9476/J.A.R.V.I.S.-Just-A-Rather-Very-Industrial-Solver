@@ -1,3 +1,5 @@
+import json
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -7,6 +9,10 @@ from jarvis.application.services.park_service import ParkService
 from jarvis.application.services.project_service import ProjectService
 from jarvis.application.services.refined_power_service import RefinedPowerService
 from jarvis.domain.entities.refined_power import RefinedPowerChainConfiguration
+from jarvis.domain.entities.refined_power_optimization import (
+    RefinedPowerOptimizationRequest,
+)
+from jarvis.infrastructure.persistence.catalog_repository import CatalogRepository
 from jarvis.infrastructure.persistence.park_repository import ParkRepository
 from jarvis.infrastructure.persistence.project_repository import ProjectRepository
 
@@ -60,6 +66,40 @@ def test_create_calculate_and_reload_chain(environment):
     assert len(reloaded) == 1
     assert reloaded[0].chain_id == chain.chain_id
     assert result.estimated_power_mw == 150
+
+
+def test_create_rejects_incompatible_configuration_without_persisting(environment):
+    project, park, mod_service, service, _, _ = environment
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+    invalid = sample_chain().model_copy(update={"heater_id": "biomass"})
+
+    with pytest.raises(ValueError, match="n'est pas compatible"):
+        service.create_chain(project.id, park.id, invalid)
+
+    assert service.list_chains(project.id, park.id) == ()
+
+
+def test_create_revalidates_models_copied_with_invalid_updates(environment):
+    project, park, mod_service, service, _, _ = environment
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+    invalid = sample_chain().model_copy(update={"boiler_count": 0})
+
+    with pytest.raises(ValueError, match="boiler_count"):
+        service.create_chain(project.id, park.id, invalid)
+
+    assert service.list_chains(project.id, park.id) == ()
+
+
+def test_update_rejects_incompatible_configuration_without_modifying_chain(environment):
+    project, park, mod_service, service, _, _ = environment
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+    original = service.create_chain(project.id, park.id, sample_chain())
+    invalid = original.model_copy(update={"heater_id": "biomass"})
+
+    with pytest.raises(ValueError, match="n'est pas compatible"):
+        service.update_chain(project.id, park.id, original.chain_id, invalid)
+
+    assert service.list_chains(project.id, park.id) == (original,)
 
 
 def test_chains_are_scoped_to_the_selected_park(environment):
@@ -116,3 +156,139 @@ def test_preview_configuration_calculates_without_persisting(environment):
 
     assert result.estimated_power_mw == 150
     assert service.list_chains(project.id, park.id) == ()
+
+
+def test_preview_optimization_returns_proposal_without_persisting(environment):
+    project, park, _, service, _, _ = environment
+    reference = sample_chain().model_copy(update={"boiler_count": 2})
+    request = RefinedPowerOptimizationRequest(
+        mode="balance_existing",
+        reference_configuration=reference,
+    )
+
+    solution = service.preview_optimization(request)
+
+    assert solution.feasible is True
+    assert solution.configuration is not None
+    assert solution.configuration.turbine_count == 2
+    assert solution.calculation is not None
+    assert solution.calculation.estimated_power_mw == Decimal("300")
+    assert service.list_chains(project.id, park.id) == ()
+
+
+def test_resource_names_follow_the_selected_game_catalog_locale(tmp_path):
+    catalog_dir = tmp_path / "SatisfactoryCatalog"
+    locales_dir = catalog_dir / "locales"
+    locales_dir.mkdir(parents=True)
+    (catalog_dir / "core.json").write_text(
+        json.dumps({"classes": {}}),
+        encoding="utf-8",
+    )
+    (locales_dir / "fr.json").write_text(
+        json.dumps(
+            {
+                "entries": {
+                    "Desc_Coal_C": {"mDisplayName": "Charbon"},
+                    "Desc_NuclearWaste_C": {"mDisplayName": "Déchets d'uranium"},
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (locales_dir / "en-US.json").write_text(
+        json.dumps(
+            {
+                "entries": {
+                    "Desc_Coal_C": {"mDisplayName": "Coal"},
+                    "Desc_NuclearWaste_C": {"mDisplayName": "Uranium Waste"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    service = RefinedPowerService(
+        game_catalog_repository=CatalogRepository(catalog_dir),
+    )
+    coal = service.get_catalog().get_fuel("coal")
+    nuclear_waste = service.get_catalog().get_fuel("nuclear_fuel_rod").byproducts[0]
+
+    assert service.list_locales() == ["fr", "en-US"]
+    assert service.get_profile_display_name(coal, "fr") == "Charbon"
+    assert service.get_profile_display_name(coal, "en-US") == "Coal"
+    assert service.get_profile_display_name(nuclear_waste, "fr") == "Déchets d'uranium"
+    assert service.get_localized_catalog("fr").get_fuel("coal").display_name == "Charbon"
+    assert (
+        service.get_localized_catalog("fr").get_fuel("nuclear_fuel_rod").byproducts[0].display_name
+        == "Déchets d'uranium"
+    )
+
+
+
+def test_resource_names_resolve_regional_locale_when_base_locale_is_selected(tmp_path):
+    catalog_dir = tmp_path / "RegionalCatalog"
+    locales_dir = catalog_dir / "locales"
+    locales_dir.mkdir(parents=True)
+    (catalog_dir / "core.json").write_text(
+        json.dumps({"classes": {}}),
+        encoding="utf-8",
+    )
+    (locales_dir / "fr-FR.json").write_text(
+        json.dumps(
+            {"entries": {"Desc_Coal_C": {"mDisplayName": "Charbon FR"}}},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    service = RefinedPowerService(
+        game_catalog_repository=CatalogRepository(catalog_dir),
+    )
+    coal = service.get_catalog().get_fuel("coal")
+
+    assert service.list_locales() == ["fr-FR", "en-US"]
+    assert service.get_profile_display_name(coal, "fr") == "Charbon FR"
+    assert service.get_profile_display_name(coal, "fr-FR") == "Charbon FR"
+
+def test_refined_power_equipment_uses_embedded_translation_and_english_fallback(environment):
+    _, _, _, service, _, _ = environment
+    boiler = service.get_catalog().get_boiler("mk1")
+
+    assert service.get_profile_display_name(boiler, "fr") == "Chaudière Mk.1"
+    assert service.get_profile_display_name(boiler, "en-US") == "Boiler Mk.1"
+
+
+def test_preview_configuration_uses_localized_byproduct_names(tmp_path):
+    catalog_dir = tmp_path / "GameCatalog"
+    locales_dir = catalog_dir / "locales"
+    locales_dir.mkdir(parents=True)
+    (catalog_dir / "core.json").write_text(
+        json.dumps({"classes": {}}),
+        encoding="utf-8",
+    )
+    (locales_dir / "fr.json").write_text(
+        json.dumps(
+            {"entries": {"Desc_NuclearWaste_C": {"mDisplayName": "Déchets d'uranium"}}},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    service = RefinedPowerService(game_catalog_repository=CatalogRepository(catalog_dir))
+    configuration = RefinedPowerChainConfiguration(
+        name="Centrale nucléaire",
+        heater_id="nuclear",
+        fuel_id="nuclear_fuel_rod",
+        boiler_id="mk2",
+        boiler_count=1,
+        turbine_id="mk2",
+        turbine_count=5,
+        generator_id="hv",
+        generator_count=5,
+        co2_chimney_count=0,
+        steam_cooling_tower_count=2,
+    )
+
+    result = service.preview_configuration(configuration, "fr")
+
+    assert result.byproducts[0].display_name == "Déchets d'uranium"

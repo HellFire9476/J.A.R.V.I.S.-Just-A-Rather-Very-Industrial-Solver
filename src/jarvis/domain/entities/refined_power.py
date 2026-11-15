@@ -21,6 +21,8 @@ class StrictModel(BaseModel):
 class RefinedPowerByproductProfile(StrictModel):
     resource_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
+    game_class_name: str | None = None
+    localized_names: dict[str, str] = Field(default_factory=dict)
     rate_per_minute: Decimal = Field(ge=0)
     unit: Literal["item/min", "m³/min"]
 
@@ -28,12 +30,15 @@ class RefinedPowerByproductProfile(StrictModel):
 class RefinedPowerHeaterProfile(StrictModel):
     heater_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
+    localized_names: dict[str, str] = Field(default_factory=dict)
     maximum_temperature_c: int = Field(gt=0)
 
 
 class RefinedPowerFuelProfile(StrictModel):
     fuel_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
+    game_class_name: str | None = None
+    localized_names: dict[str, str] = Field(default_factory=dict)
     heater_id: str = Field(min_length=1)
     heat_per_cycle: Decimal = Field(gt=0)
     consumption_per_minute: Decimal = Field(gt=0)
@@ -41,6 +46,15 @@ class RefinedPowerFuelProfile(StrictModel):
     operating_temperature_c: int = Field(gt=0)
     co2_output_m3_per_minute: Decimal = Field(ge=0)
     byproducts: tuple[RefinedPowerByproductProfile, ...] = ()
+
+    @model_validator(mode="after")
+    def unique_byproduct_resources(self):
+        resource_ids = [item.resource_id for item in self.byproducts]
+        if len(resource_ids) != len(set(resource_ids)):
+            raise ValueError(
+                "Un identifiant de coproduit ne peut apparaître qu'une fois par combustible."
+            )
+        return self
 
 
 class RefinedPowerBoilerOperatingPoint(StrictModel):
@@ -52,6 +66,7 @@ class RefinedPowerBoilerOperatingPoint(StrictModel):
 class RefinedPowerBoilerProfile(StrictModel):
     boiler_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
+    localized_names: dict[str, str] = Field(default_factory=dict)
     operating_points: tuple[RefinedPowerBoilerOperatingPoint, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -73,6 +88,7 @@ class RefinedPowerBoilerProfile(StrictModel):
 class RefinedPowerTurbineProfile(StrictModel):
     turbine_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
+    localized_names: dict[str, str] = Field(default_factory=dict)
     high_pressure_steam_input_m3_per_minute: Decimal = Field(gt=0)
     low_pressure_steam_output_m3_per_minute: Decimal = Field(gt=0)
     maximum_rpm: Decimal = Field(gt=0)
@@ -81,6 +97,7 @@ class RefinedPowerTurbineProfile(StrictModel):
 class RefinedPowerGeneratorProfile(StrictModel):
     generator_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
+    localized_names: dict[str, str] = Field(default_factory=dict)
     maximum_power_mw: Decimal = Field(gt=0)
     required_rpm: Decimal = Field(gt=0)
 

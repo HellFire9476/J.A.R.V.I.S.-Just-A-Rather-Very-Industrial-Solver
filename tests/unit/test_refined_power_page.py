@@ -202,3 +202,245 @@ def test_refined_power_is_registered_as_an_independent_navigation_page():
 
     sidebar.close()
     app.processEvents()
+
+
+def test_refined_power_page_exposes_three_optimization_modes(tmp_path):
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    from jarvis.presentation.pages.refined_power.page import RefinedPowerPage
+
+    app = QApplication.instance() or QApplication([])
+    (
+        project,
+        park,
+        project_service,
+        park_service,
+        mod_service,
+        refined_power_service,
+    ) = _create_environment(tmp_path)
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+
+    page = RefinedPowerPage(
+        refined_power_service,
+        project_service,
+        park_service,
+    )
+
+    optimizer = page.optimization_panel
+    assert page.detail_tabs.tabText(1) == "Équilibrage automatique"
+    assert [
+        optimizer.mode_combo.itemData(index)
+        for index in range(optimizer.mode_combo.count())
+    ] == ["balance_existing", "maximize", "target"]
+    assert optimizer.preview_button.isEnabled() is True
+    assert optimizer.apply_button.isEnabled() is False
+
+    page.close()
+    app.processEvents()
+
+
+def test_optimization_preview_does_not_persist_until_user_applies_it(
+    tmp_path,
+    monkeypatch,
+):
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from jarvis.presentation.pages.refined_power.page import RefinedPowerPage
+
+    app = QApplication.instance() or QApplication([])
+    (
+        project,
+        park,
+        project_service,
+        park_service,
+        mod_service,
+        refined_power_service,
+    ) = _create_environment(tmp_path)
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+    original = RefinedPowerChainConfiguration(
+        name="Centrale à équilibrer",
+        heater_id="coal",
+        fuel_id="coal",
+        boiler_id="mk1",
+        boiler_count=2,
+        turbine_id="mk1",
+        turbine_count=1,
+        generator_id="lv",
+        generator_count=1,
+        co2_chimney_count=0,
+        steam_cooling_tower_count=0,
+    )
+    refined_power_service.create_chain(project.id, park.id, original)
+
+    page = RefinedPowerPage(
+        refined_power_service,
+        project_service,
+        park_service,
+    )
+    panel = page.optimization_panel
+    panel.mode_combo.setCurrentIndex(panel.mode_combo.findData("balance_existing"))
+    panel.preview_button.click()
+
+    preview = panel.solution
+    assert preview is not None
+    assert preview.feasible is True
+    assert preview.configuration is not None
+    assert preview.configuration.turbine_count == 2
+    assert panel.apply_button.isEnabled() is True
+
+    before_apply = refined_power_service.list_chains(project.id, park.id)
+    assert len(before_apply) == 1
+    assert before_apply[0].turbine_count == 1
+    assert before_apply[0].co2_chimney_count == 0
+    assert before_apply[0].steam_cooling_tower_count == 0
+
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        staticmethod(lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes),
+    )
+    panel.apply_button.click()
+    app.processEvents()
+
+    after_apply = refined_power_service.list_chains(project.id, park.id)
+    assert len(after_apply) == 1
+    assert after_apply[0].chain_id == original.chain_id
+    assert after_apply[0].turbine_count == 2
+    assert after_apply[0].generator_count == 2
+    assert after_apply[0].co2_chimney_count == 1
+    assert after_apply[0].steam_cooling_tower_count == 1
+
+    page.close()
+    app.processEvents()
+
+
+def test_optimization_tutorial_and_mode_explanations_are_available(tmp_path):
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication, QLabel
+
+    from jarvis.presentation.pages.refined_power.page import RefinedPowerPage
+
+    app = QApplication.instance() or QApplication([])
+    (
+        project,
+        park,
+        project_service,
+        park_service,
+        mod_service,
+        refined_power_service,
+    ) = _create_environment(tmp_path)
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+
+    page = RefinedPowerPage(
+        refined_power_service,
+        project_service,
+        park_service,
+    )
+    panel = page.optimization_panel
+
+    panel.tutorial_button.click()
+    assert panel.tutorial_panel.isHidden() is False
+    tutorial_text = " ".join(
+        child.text() for child in panel.tutorial_panel.findChildren(QLabel)
+    )
+    assert "GUIDE PAS À PAS" in tutorial_text
+
+    panel.mode_combo.setCurrentIndex(panel.mode_combo.findData("target"))
+    assert "puissance" in panel.mode_explanation_label.text().lower()
+    assert "500 MW" in panel.mode_example_label.text()
+
+    page.close()
+    app.processEvents()
+
+
+def test_refined_power_resource_and_machine_names_follow_selected_locale(tmp_path):
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    from jarvis.presentation.pages.refined_power.page import RefinedPowerPage
+
+    app = QApplication.instance() or QApplication([])
+    (
+        project,
+        park,
+        project_service,
+        park_service,
+        mod_service,
+        refined_power_service,
+    ) = _create_environment(tmp_path)
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+
+    page = RefinedPowerPage(
+        refined_power_service,
+        project_service,
+        park_service,
+    )
+    page.heater_combo.setCurrentIndex(page.heater_combo.findData("coal"))
+    coal_index = page.fuel_combo.findData("coal")
+    assert page.heater_combo.currentText() == "Chauffage au charbon"
+    assert page.fuel_combo.itemText(coal_index).startswith("Charbon")
+
+    english_index = page.locale_combo.findData("en-US")
+    assert english_index >= 0
+    page.locale_combo.setCurrentIndex(english_index)
+    app.processEvents()
+
+    coal_index = page.fuel_combo.findData("coal")
+    assert page.heater_combo.currentText() == "Coal Heater"
+    assert page.fuel_combo.itemText(coal_index).startswith("Coal")
+
+    optimization_coal_index = page.optimization_panel.fuel_filter.findData("coal")
+    assert page.optimization_panel.fuel_filter.itemText(optimization_coal_index) == "Coal"
+
+    page.close()
+    app.processEvents()
+
+
+def test_byproduct_capacity_edit_invalidates_preview_after_locale_change(tmp_path):
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    from jarvis.presentation.pages.refined_power.page import RefinedPowerPage
+
+    app = QApplication.instance() or QApplication([])
+    (
+        project,
+        park,
+        project_service,
+        park_service,
+        mod_service,
+        refined_power_service,
+    ) = _create_environment(tmp_path)
+    mod_service.set_mod_enabled(project.id, park.id, "refined_power", True)
+
+    page = RefinedPowerPage(
+        refined_power_service,
+        project_service,
+        park_service,
+    )
+    panel = page.optimization_panel
+    panel.mode_combo.setCurrentIndex(panel.mode_combo.findData("maximize"))
+    panel.fuel_filter.setCurrentIndex(panel.fuel_filter.findData("coal"))
+    panel.boiler_filter.setCurrentIndex(panel.boiler_filter.findData("mk1"))
+    panel.max_boilers_spin.setValue(1)
+
+    panel.preview_button.click()
+    assert panel.solution is not None
+    assert panel.apply_button.isEnabled() is True
+    assert panel.byproduct_inputs
+
+    panel.set_locale("en-US")
+    panel.preview_button.click()
+    assert panel.solution is not None
+    assert panel.apply_button.isEnabled() is True
+
+    capacity_field = next(iter(panel.byproduct_inputs.values()))
+    capacity_field.setText("1")
+
+    assert panel.solution is None
+    assert panel.apply_button.isEnabled() is False
+
+    page.close()
+    app.processEvents()

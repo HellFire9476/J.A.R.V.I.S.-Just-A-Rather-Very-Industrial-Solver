@@ -1,8 +1,12 @@
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 
-from jarvis.domain.entities.refined_power import RefinedPowerChainConfiguration
+from jarvis.domain.entities.refined_power import (
+    RefinedPowerChainConfiguration,
+    RefinedPowerFuelProfile,
+)
 from jarvis.engines.refined_power_engine import (
     RefinedPowerCalculationError,
     RefinedPowerEngine,
@@ -191,3 +195,50 @@ def test_nuclear_fuel_reports_waste_byproduct(engine, catalog):
     assert result.byproducts[0].rate_per_minute == Decimal("6.25")
     assert result.byproducts[0].unit == "item/min"
     assert result.co2_output_m3_per_minute == Decimal("0")
+
+
+
+def test_surplus_generators_are_reported_without_inflating_power(engine, catalog):
+    result = engine.calculate(coal_mk1_chain(generator_count=2), catalog)
+
+    assert result.connected_generator_count == 1
+    assert result.idle_generator_count == 1
+    assert result.turbine_without_generator_count == 0
+    assert result.estimated_power_mw == Decimal("150")
+    assert any("générateur(s)" in warning for warning in result.warnings)
+
+
+def test_turbines_without_generators_are_reported(engine, catalog):
+    result = engine.calculate(
+        coal_mk1_chain(turbine_count=2, generator_count=1),
+        catalog,
+    )
+
+    assert result.connected_generator_count == 1
+    assert result.idle_generator_count == 0
+    assert result.turbine_without_generator_count == 1
+    assert result.estimated_power_mw == Decimal("75")
+    assert any("turbine(s) ne sont reliées" in warning for warning in result.warnings)
+
+
+def test_zero_turbines_reports_all_high_pressure_steam_as_surplus(engine, catalog):
+    result = engine.calculate(
+        coal_mk1_chain(turbine_count=0, generator_count=0, steam_cooling_tower_count=0),
+        catalog,
+    )
+
+    assert result.high_pressure_steam_generated_m3_per_minute == Decimal("60")
+    assert result.high_pressure_steam_used_m3_per_minute == Decimal("0")
+    assert result.high_pressure_steam_surplus_m3_per_minute == Decimal("60")
+    assert result.low_pressure_steam_output_m3_per_minute == Decimal("0")
+    assert result.estimated_power_mw == Decimal("0")
+    assert result.sustainable is False
+
+
+def test_fuel_rejects_duplicate_byproduct_resource_ids(catalog):
+    fuel = catalog.get_fuel("nuclear_fuel_rod")
+    payload = fuel.model_dump()
+    payload["byproducts"] = [payload["byproducts"][0], payload["byproducts"][0]]
+
+    with pytest.raises(ValidationError, match="identifiant de coproduit"):
+        RefinedPowerFuelProfile.model_validate(payload)

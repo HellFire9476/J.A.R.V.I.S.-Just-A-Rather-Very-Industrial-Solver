@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QLocale, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -29,6 +30,9 @@ from jarvis.application.services.refined_power_service import RefinedPowerServic
 from jarvis.domain.entities.project import Project
 from jarvis.domain.entities.refined_power import RefinedPowerChainConfiguration
 from jarvis.engines.refined_power_engine import RefinedPowerChainResult
+from jarvis.presentation.pages.refined_power.optimization_panel import (
+    RefinedPowerOptimizationPanel,
+)
 
 
 class RefinedPowerPage(QWidget):
@@ -59,6 +63,13 @@ class RefinedPowerPage(QWidget):
         self._loading_form = False
         self._catalog = None
         self._catalog_error: str | None = None
+        try:
+            self._available_locales = self.service.list_locales()
+        except Exception:
+            self._available_locales = ["fr", "en-US"]
+        if not self._available_locales:
+            self._available_locales = ["fr", "en-US"]
+        self._locale = self._preferred_locale(self._available_locales)
 
         try:
             self._catalog = self.service.get_catalog()
@@ -117,6 +128,26 @@ class RefinedPowerPage(QWidget):
         )
         self.park_combo.currentIndexChanged.connect(self._on_park_changed)
         target_layout.addWidget(self.park_combo)
+
+        language_label = QLabel("LANGUE DU CATALOGUE")
+        language_label.setObjectName("SectionLabel")
+        target_layout.addWidget(language_label)
+
+        self.locale_combo = QComboBox()
+        self.locale_combo.setObjectName("RPLocaleSelector")
+        self.locale_combo.setMinimumWidth(165)
+        self.locale_combo.setMinimumHeight(36)
+        self.locale_combo.setToolTip(
+            "Choisissez la langue des noms de ressources Satisfactory et des équipements "
+            "Refined Power. Les identifiants techniques et les calculs restent inchangés. "
+            "La langue de l'interface générale reste le français pour le moment."
+        )
+        for locale in self._available_locales:
+            self.locale_combo.addItem(self._locale_label(locale), locale)
+        locale_index = self.locale_combo.findData(self._locale)
+        self.locale_combo.setCurrentIndex(max(locale_index, 0))
+        self.locale_combo.currentIndexChanged.connect(self._on_locale_changed)
+        target_layout.addWidget(self.locale_combo)
         target_layout.addStretch(1)
 
         self.module_state_label = QLabel("AUCUN PARC SÉLECTIONNÉ")
@@ -190,6 +221,13 @@ class RefinedPowerPage(QWidget):
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(13)
+
+        self.detail_tabs = QTabWidget()
+        self.detail_tabs.setObjectName("RPTabs")
+        configuration_tab = QWidget()
+        configuration_layout = QVBoxLayout(configuration_tab)
+        configuration_layout.setContentsMargins(0, 0, 0, 0)
+        configuration_layout.setSpacing(13)
 
         editor = QFrame()
         editor.setObjectName("RPPanel")
@@ -271,7 +309,7 @@ class RefinedPowerPage(QWidget):
         self.save_button.clicked.connect(self._save_chain)
         actions.addWidget(self.save_button)
         editor_layout.addLayout(actions)
-        right_layout.addWidget(editor)
+        configuration_layout.addWidget(editor)
 
         results = QFrame()
         results.setObjectName("RPPanel")
@@ -308,8 +346,15 @@ class RefinedPowerPage(QWidget):
         self.warnings_label.setWordWrap(True)
         results_layout.addWidget(self.warnings_label)
 
-        right_layout.addWidget(results)
-        right_layout.addStretch(1)
+        configuration_layout.addWidget(results)
+        configuration_layout.addStretch(1)
+
+        self.optimization_panel = RefinedPowerOptimizationPanel(self.service, self.detail_tabs)
+        self.optimization_panel.set_locale(self._locale)
+        self.optimization_panel.apply_requested.connect(self._apply_optimization)
+        self.detail_tabs.addTab(configuration_tab, "Installations")
+        self.detail_tabs.addTab(self.optimization_panel, "Équilibrage automatique")
+        right_layout.addWidget(self.detail_tabs, 1)
         parent_layout.addWidget(right, 1)
 
         self._populate_catalog_controls()
@@ -384,27 +429,92 @@ class RefinedPowerPage(QWidget):
         layout.addWidget(card, row, column)
         return value
 
-    def _populate_catalog_controls(self) -> None:
+    @staticmethod
+    def _preferred_locale(locales: list[str]) -> str:
+        normalized = {locale.casefold(): locale for locale in locales}
+        for preferred in ("fr", "en-US"):
+            exact = normalized.get(preferred.casefold())
+            if exact:
+                return exact
+            language = preferred.split("-", 1)[0].casefold()
+            regional_match = next(
+                (
+                    locale
+                    for locale in locales
+                    if locale.casefold().split("-", 1)[0] == language
+                ),
+                None,
+            )
+            if regional_match:
+                return regional_match
+        return locales[0]
+
+    @staticmethod
+    def _locale_label(locale: str) -> str:
+        native_name = QLocale(locale).nativeLanguageName().strip()
+        if not native_name:
+            return locale
+        return f"{native_name[:1].upper()}{native_name[1:]} ({locale})"
+
+    def _on_locale_changed(self, _index: int) -> None:
+        locale = self.locale_combo.currentData()
+        if not locale or locale == self._locale:
+            return
+
+        self._locale = str(locale)
+        selected = {
+            "heater": self.heater_combo.currentData(),
+            "fuel": self.fuel_combo.currentData(),
+            "boiler": self.boiler_combo.currentData(),
+            "turbine": self.turbine_combo.currentData(),
+            "generator": self.generator_combo.currentData(),
+        }
+        self._loading_form = True
+        self._populate_catalog_controls(selected)
+        self._loading_form = False
+        self.optimization_panel.set_locale(self._locale)
+        self._preview_form()
+
+    def _populate_catalog_controls(self, preferred: dict[str, str | None] | None = None) -> None:
         if self._catalog is None:
             self.status_label.setText(
                 f"Catalogue Refined Power indisponible : {self._catalog_error or 'erreur inconnue'}"
             )
             return
 
+        preferred = preferred or {}
+        selected_heater = preferred.get("heater", self.heater_combo.currentData())
+        selected_fuel = preferred.get("fuel", self.fuel_combo.currentData())
+        selected_boiler = preferred.get("boiler", self.boiler_combo.currentData())
+        selected_turbine = preferred.get("turbine", self.turbine_combo.currentData())
+        selected_generator = preferred.get("generator", self.generator_combo.currentData())
+
         self.heater_combo.clear()
         for heater in self._catalog.heaters:
-            self.heater_combo.addItem(heater.display_name, heater.heater_id)
+            self.heater_combo.addItem(
+                self.service.get_profile_display_name(heater, self._locale),
+                heater.heater_id,
+            )
+        self._set_combo_value(self.heater_combo, selected_heater)
 
         self.boiler_combo.clear()
         for boiler in self._catalog.boilers:
-            self.boiler_combo.addItem(boiler.display_name, boiler.boiler_id)
+            self.boiler_combo.addItem(
+                self.service.get_profile_display_name(boiler, self._locale),
+                boiler.boiler_id,
+            )
+        self._set_combo_value(self.boiler_combo, selected_boiler)
 
         self.turbine_combo.clear()
         for turbine in self._catalog.turbines:
-            self.turbine_combo.addItem(turbine.display_name, turbine.turbine_id)
+            self.turbine_combo.addItem(
+                self.service.get_profile_display_name(turbine, self._locale),
+                turbine.turbine_id,
+            )
+        self._set_combo_value(self.turbine_combo, selected_turbine)
 
-        self._populate_generators()
-        self._populate_fuels()
+        self._populate_generators(selected_generator)
+        self._populate_fuels(selected_fuel)
 
     def _populate_generators(self, preferred_generator_id: str | None = None) -> None:
         if self._catalog is None:
@@ -420,7 +530,7 @@ class RefinedPowerPage(QWidget):
         for generator in self._catalog.generators:
             if generator.generator_id in supported_ids:
                 self.generator_combo.addItem(
-                    generator.display_name,
+                    self.service.get_profile_display_name(generator, self._locale),
                     generator.generator_id,
                 )
         selected = self.generator_combo.findData(preferred_generator_id)
@@ -456,7 +566,8 @@ class RefinedPowerPage(QWidget):
         fuels = [fuel for fuel in self._catalog.fuels if fuel.heater_id == heater_id]
         for fuel in fuels:
             label = (
-                f"{fuel.display_name} · {fuel.operating_temperature_c} °C"
+                f"{self.service.get_profile_display_name(fuel, self._locale)} · "
+                f"{fuel.operating_temperature_c} °C"
             )
             self.fuel_combo.addItem(label, fuel.fuel_id)
         index = self.fuel_combo.findData(preferred_fuel_id)
@@ -642,6 +753,12 @@ class RefinedPowerPage(QWidget):
             f"{len(chains)} chaîne(s) enregistrée(s) dans ce parc"
         )
         self.chain_list.blockSignals(False)
+        self.optimization_panel.set_context(
+            self.project.id if self.project is not None else None,
+            self._selected_park_id,
+            self._module_enabled,
+            tuple(chains),
+        )
 
         enabled = (
             self._target_selected()
@@ -690,6 +807,7 @@ class RefinedPowerPage(QWidget):
             self._show_error("Lecture de la chaîne impossible", error)
             return
         self._populate_form(chain)
+        self.optimization_panel.select_reference_chain(chain_id)
         self._calculate_selected_chain(chain_id)
 
     def _start_new_chain(self) -> None:
@@ -819,7 +937,7 @@ class RefinedPowerPage(QWidget):
             return
         try:
             configuration = self._build_form_configuration()
-            result = self.service.preview_configuration(configuration)
+            result = self.service.preview_configuration(configuration, self._locale)
         except Exception as error:
             self._reset_result()
             self.result_state_label.setText("APERÇU INCOMPLET")
@@ -844,7 +962,7 @@ class RefinedPowerPage(QWidget):
         try:
             configuration = self._build_form_configuration()
             # Valide les compatibilités et les flux avant toute écriture.
-            self.service.preview_configuration(configuration)
+            self.service.preview_configuration(configuration, self._locale)
             if self._editing_chain_id is None:
                 saved = self.service.create_chain(
                     self.project.id,
@@ -865,6 +983,67 @@ class RefinedPowerPage(QWidget):
         self._render_chains(saved.chain_id)
         self.status_label.setText(
             f"Installation « {saved.name} » enregistrée dans le parc."
+        )
+
+    def _apply_optimization(self, configuration: RefinedPowerChainConfiguration) -> None:
+        """Persiste une proposition uniquement après confirmation explicite."""
+
+        if not self._target_selected() or not self._module_enabled:
+            return
+
+        try:
+            existing_chains = self.service.list_chains(
+                self.project.id,
+                self._selected_park_id,
+            )
+            is_update = any(
+                item.chain_id == configuration.chain_id for item in existing_chains
+            )
+        except Exception as error:
+            self._show_error("Lecture des installations impossible", error)
+            return
+
+        action = "remplacer la configuration" if is_update else "créer une nouvelle chaîne"
+        target_note = ""
+        solution = self.optimization_panel.solution
+        if solution is not None and solution.target_reached is False:
+            target_note = (
+                "\n\nAttention : la puissance cible n'a pas été atteinte. "
+                "La proposition correspond à la meilleure solution réalisable trouvée."
+            )
+        answer = QMessageBox.question(
+            self,
+            "Appliquer l'équilibrage",
+            f"Voulez-vous {action} « {configuration.name} » dans ce parc ?"
+            f"{target_note}\n\nCette opération modifiera les données enregistrées du parc.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            if is_update:
+                saved = self.service.update_chain(
+                    self.project.id,
+                    self._selected_park_id,
+                    configuration.chain_id,
+                    configuration,
+                )
+            else:
+                saved = self.service.create_chain(
+                    self.project.id,
+                    self._selected_park_id,
+                    configuration,
+                )
+        except Exception as error:
+            self._show_error("Application de l'équilibrage impossible", error)
+            return
+
+        self._render_chains(saved.chain_id)
+        self.detail_tabs.setCurrentIndex(0)
+        self.status_label.setText(
+            f"Proposition appliquée : « {saved.name} » a été enregistrée dans ce parc."
         )
 
     def _duplicate_chain(self) -> None:
@@ -955,6 +1134,7 @@ class RefinedPowerPage(QWidget):
                 self.project.id,
                 self._selected_park_id,
                 chain_id,
+                self._locale,
             )
         except Exception as error:
             self._show_error("Calcul impossible", error)

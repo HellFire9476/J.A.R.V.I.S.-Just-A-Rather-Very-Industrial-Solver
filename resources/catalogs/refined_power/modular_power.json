@@ -12,67 +12,588 @@
     "https://docs.ficsit.app/refinedrd/latest/rp/buildings/modularpower/MP-Chimneys.html"
   ],
   "heaters": [
-    {"heater_id": "biomass", "display_name": "Biomass Heater", "maximum_temperature_c": 500},
-    {"heater_id": "coal", "display_name": "Coal Heater", "maximum_temperature_c": 500},
-    {"heater_id": "solution", "display_name": "Solution Heater", "maximum_temperature_c": 1250},
-    {"heater_id": "nuclear", "display_name": "Nuclear Heater", "maximum_temperature_c": 2000}
+    {
+      "heater_id": "biomass",
+      "display_name": "Biomass Heater",
+      "maximum_temperature_c": 500,
+      "localized_names": {
+        "fr": "Chauffage à biomasse"
+      }
+    },
+    {
+      "heater_id": "coal",
+      "display_name": "Coal Heater",
+      "maximum_temperature_c": 500,
+      "localized_names": {
+        "fr": "Chauffage au charbon"
+      }
+    },
+    {
+      "heater_id": "solution",
+      "display_name": "Solution Heater",
+      "maximum_temperature_c": 1250,
+      "localized_names": {
+        "fr": "Chauffage de solution"
+      }
+    },
+    {
+      "heater_id": "nuclear",
+      "display_name": "Nuclear Heater",
+      "maximum_temperature_c": 2000,
+      "localized_names": {
+        "fr": "Chauffage nucléaire"
+      }
+    }
   ],
   "fuels": [
-    {"fuel_id": "leaves", "display_name": "Leaves", "heater_id": "biomass", "heat_per_cycle": 0.5, "consumption_per_minute": 240, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "wood", "display_name": "Wood", "heater_id": "biomass", "heat_per_cycle": 1, "consumption_per_minute": 36, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 45, "byproducts": []},
-    {"fuel_id": "mycelia", "display_name": "Mycelia", "heater_id": "biomass", "heat_per_cycle": 2, "consumption_per_minute": 180, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 45, "byproducts": []},
-    {"fuel_id": "alien_carapace", "display_name": "Alien Carapace", "heater_id": "biomass", "heat_per_cycle": 10, "consumption_per_minute": 15, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "fabric", "display_name": "Fabric", "heater_id": "biomass", "heat_per_cycle": 5, "consumption_per_minute": 240, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "alien_organs", "display_name": "Alien Organs", "heater_id": "biomass", "heat_per_cycle": 10, "consumption_per_minute": 15, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "biomass", "display_name": "Biomass", "heater_id": "biomass", "heat_per_cycle": 20, "consumption_per_minute": 20, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "solid_biofuel", "display_name": "Solid Biofuel", "heater_id": "biomass", "heat_per_cycle": 30, "consumption_per_minute": 8, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "packaged_biofuel", "display_name": "Packaged Biofuel", "heater_id": "biomass", "heat_per_cycle": 35, "consumption_per_minute": 4.8, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 45, "byproducts": []},
-    {"fuel_id": "coal", "display_name": "Coal", "heater_id": "coal", "heat_per_cycle": 10, "consumption_per_minute": 15, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "petroleum_coke", "display_name": "Petroleum Coke", "heater_id": "coal", "heat_per_cycle": 6, "consumption_per_minute": 25, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "compacted_coal", "display_name": "Compacted Coal", "heater_id": "coal", "heat_per_cycle": 15, "consumption_per_minute": 7.143, "input_unit": "item/min", "operating_temperature_c": 500, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "liquid_biofuel", "display_name": "Liquid Biofuel", "heater_id": "solution", "heat_per_cycle": 25, "consumption_per_minute": 12, "input_unit": "m³/min", "operating_temperature_c": 750, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "fuel", "display_name": "Fuel", "heater_id": "solution", "heat_per_cycle": 30, "consumption_per_minute": 12, "input_unit": "m³/min", "operating_temperature_c": 750, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "turbofuel", "display_name": "Turbofuel", "heater_id": "solution", "heat_per_cycle": 35, "consumption_per_minute": 4, "input_unit": "m³/min", "operating_temperature_c": 750, "co2_output_m3_per_minute": 45, "byproducts": []},
-    {"fuel_id": "methane", "display_name": "Methane", "heater_id": "solution", "heat_per_cycle": 35, "consumption_per_minute": 6, "input_unit": "m³/min", "operating_temperature_c": 750, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "rocket_fuel", "display_name": "Rocket Fuel", "heater_id": "solution", "heat_per_cycle": 35, "consumption_per_minute": 6, "input_unit": "m³/min", "operating_temperature_c": 750, "co2_output_m3_per_minute": 30, "byproducts": []},
-    {"fuel_id": "hot_molten_salt", "display_name": "Hot Molten Salt", "heater_id": "solution", "heat_per_cycle": 50, "consumption_per_minute": 60, "input_unit": "m³/min", "operating_temperature_c": 750, "co2_output_m3_per_minute": 0, "byproducts": [{"resource_id": "molten_salt", "display_name": "Molten Salt", "rate_per_minute": 60, "unit": "m³/min"}]},
-    {"fuel_id": "ionized_fuel", "display_name": "Ionized Fuel", "heater_id": "solution", "heat_per_cycle": 50, "consumption_per_minute": 10, "input_unit": "m³/min", "operating_temperature_c": 1250, "co2_output_m3_per_minute": 75, "byproducts": []},
-    {"fuel_id": "nuclear_fuel_rod", "display_name": "Nuclear Fuel Rod", "heater_id": "nuclear", "heat_per_cycle": 2000, "consumption_per_minute": 0.125, "input_unit": "item/min", "operating_temperature_c": 2000, "co2_output_m3_per_minute": 0, "byproducts": [{"resource_id": "nuclear_waste", "display_name": "Nuclear Waste", "rate_per_minute": 6.25, "unit": "item/min"}]},
-    {"fuel_id": "plutonium", "display_name": "Plutonium", "heater_id": "nuclear", "heat_per_cycle": 2000, "consumption_per_minute": 0.0625, "input_unit": "item/min", "operating_temperature_c": 2000, "co2_output_m3_per_minute": 0, "byproducts": [{"resource_id": "plutonium_waste", "display_name": "Plutonium Waste", "rate_per_minute": 0.625, "unit": "item/min"}]},
-    {"fuel_id": "dt_reactor_core", "display_name": "DT Reactor Core", "heater_id": "nuclear", "heat_per_cycle": 2500, "consumption_per_minute": 0.5, "input_unit": "item/min", "operating_temperature_c": 2000, "co2_output_m3_per_minute": 0, "byproducts": [{"resource_id": "advanced_reactor_core", "display_name": "Advanced Reactor Core", "rate_per_minute": 0.5, "unit": "item/min"}]},
-    {"fuel_id": "deanorium_reactor_core", "display_name": "Deanorium Reactor Core", "heater_id": "nuclear", "heat_per_cycle": 2500, "consumption_per_minute": 0.125, "input_unit": "item/min", "operating_temperature_c": 2000, "co2_output_m3_per_minute": 0, "byproducts": [{"resource_id": "advanced_reactor_core", "display_name": "Advanced Reactor Core", "rate_per_minute": 0.125, "unit": "item/min"}]},
-    {"fuel_id": "ficsonium_fuel_rod", "display_name": "Ficsonium Fuel Rod", "heater_id": "nuclear", "heat_per_cycle": 2500, "consumption_per_minute": 0.667, "input_unit": "item/min", "operating_temperature_c": 2000, "co2_output_m3_per_minute": 0, "byproducts": []}
+    {
+      "fuel_id": "leaves",
+      "display_name": "Leaves",
+      "heater_id": "biomass",
+      "heat_per_cycle": 0.5,
+      "consumption_per_minute": 240,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_Leaves_C",
+      "localized_names": {
+        "fr": "Feuilles"
+      }
+    },
+    {
+      "fuel_id": "wood",
+      "display_name": "Wood",
+      "heater_id": "biomass",
+      "heat_per_cycle": 1,
+      "consumption_per_minute": 36,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 45,
+      "byproducts": [],
+      "game_class_name": "Desc_Wood_C",
+      "localized_names": {
+        "fr": "Bois"
+      }
+    },
+    {
+      "fuel_id": "mycelia",
+      "display_name": "Mycelia",
+      "heater_id": "biomass",
+      "heat_per_cycle": 2,
+      "consumption_per_minute": 180,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 45,
+      "byproducts": [],
+      "game_class_name": "Desc_Mycelia_C",
+      "localized_names": {
+        "fr": "Mycélium"
+      }
+    },
+    {
+      "fuel_id": "alien_carapace",
+      "display_name": "Alien Carapace",
+      "heater_id": "biomass",
+      "heat_per_cycle": 10,
+      "consumption_per_minute": 15,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "localized_names": {
+        "fr": "Carapace extraterrestre"
+      }
+    },
+    {
+      "fuel_id": "fabric",
+      "display_name": "Fabric",
+      "heater_id": "biomass",
+      "heat_per_cycle": 5,
+      "consumption_per_minute": 240,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_Fabric_C",
+      "localized_names": {
+        "fr": "Tissu"
+      }
+    },
+    {
+      "fuel_id": "alien_organs",
+      "display_name": "Alien Organs",
+      "heater_id": "biomass",
+      "heat_per_cycle": 10,
+      "consumption_per_minute": 15,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "localized_names": {
+        "fr": "Organes extraterrestres"
+      }
+    },
+    {
+      "fuel_id": "biomass",
+      "display_name": "Biomass",
+      "heater_id": "biomass",
+      "heat_per_cycle": 20,
+      "consumption_per_minute": 20,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_GenericBiomass_C",
+      "localized_names": {
+        "fr": "Biomasse"
+      }
+    },
+    {
+      "fuel_id": "solid_biofuel",
+      "display_name": "Solid Biofuel",
+      "heater_id": "biomass",
+      "heat_per_cycle": 30,
+      "consumption_per_minute": 8,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_Biofuel_C",
+      "localized_names": {
+        "fr": "Biocarburant solide"
+      }
+    },
+    {
+      "fuel_id": "packaged_biofuel",
+      "display_name": "Packaged Biofuel",
+      "heater_id": "biomass",
+      "heat_per_cycle": 35,
+      "consumption_per_minute": 4.8,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 45,
+      "byproducts": [],
+      "game_class_name": "Desc_PackagedBiofuel_C",
+      "localized_names": {
+        "fr": "Biocarburant liquide conditionné"
+      }
+    },
+    {
+      "fuel_id": "coal",
+      "display_name": "Coal",
+      "heater_id": "coal",
+      "heat_per_cycle": 10,
+      "consumption_per_minute": 15,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_Coal_C",
+      "localized_names": {
+        "fr": "Charbon"
+      }
+    },
+    {
+      "fuel_id": "petroleum_coke",
+      "display_name": "Petroleum Coke",
+      "heater_id": "coal",
+      "heat_per_cycle": 6,
+      "consumption_per_minute": 25,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_PetroleumCoke_C",
+      "localized_names": {
+        "fr": "Coke de pétrole"
+      }
+    },
+    {
+      "fuel_id": "compacted_coal",
+      "display_name": "Compacted Coal",
+      "heater_id": "coal",
+      "heat_per_cycle": 15,
+      "consumption_per_minute": 7.143,
+      "input_unit": "item/min",
+      "operating_temperature_c": 500,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_CompactedCoal_C",
+      "localized_names": {
+        "fr": "Charbon compacté"
+      }
+    },
+    {
+      "fuel_id": "liquid_biofuel",
+      "display_name": "Liquid Biofuel",
+      "heater_id": "solution",
+      "heat_per_cycle": 25,
+      "consumption_per_minute": 12,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 750,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_LiquidBiofuel_C",
+      "localized_names": {
+        "fr": "Biocarburant liquide"
+      }
+    },
+    {
+      "fuel_id": "fuel",
+      "display_name": "Fuel",
+      "heater_id": "solution",
+      "heat_per_cycle": 30,
+      "consumption_per_minute": 12,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 750,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_LiquidFuel_C",
+      "localized_names": {
+        "fr": "Carburant"
+      }
+    },
+    {
+      "fuel_id": "turbofuel",
+      "display_name": "Turbofuel",
+      "heater_id": "solution",
+      "heat_per_cycle": 35,
+      "consumption_per_minute": 4,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 750,
+      "co2_output_m3_per_minute": 45,
+      "byproducts": [],
+      "game_class_name": "Desc_LiquidTurboFuel_C",
+      "localized_names": {
+        "fr": "Turbocarburant"
+      }
+    },
+    {
+      "fuel_id": "methane",
+      "display_name": "Methane",
+      "heater_id": "solution",
+      "heat_per_cycle": 35,
+      "consumption_per_minute": 6,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 750,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "localized_names": {
+        "fr": "Méthane"
+      }
+    },
+    {
+      "fuel_id": "rocket_fuel",
+      "display_name": "Rocket Fuel",
+      "heater_id": "solution",
+      "heat_per_cycle": 35,
+      "consumption_per_minute": 6,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 750,
+      "co2_output_m3_per_minute": 30,
+      "byproducts": [],
+      "game_class_name": "Desc_RocketFuel_C",
+      "localized_names": {
+        "fr": "Carburant de fusée"
+      }
+    },
+    {
+      "fuel_id": "hot_molten_salt",
+      "display_name": "Hot Molten Salt",
+      "heater_id": "solution",
+      "heat_per_cycle": 50,
+      "consumption_per_minute": 60,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 750,
+      "co2_output_m3_per_minute": 0,
+      "byproducts": [
+        {
+          "resource_id": "molten_salt",
+          "display_name": "Molten Salt",
+          "rate_per_minute": 60,
+          "unit": "m³/min",
+          "localized_names": {
+            "fr": "Sel fondu"
+          }
+        }
+      ],
+      "localized_names": {
+        "fr": "Sel fondu chaud"
+      }
+    },
+    {
+      "fuel_id": "ionized_fuel",
+      "display_name": "Ionized Fuel",
+      "heater_id": "solution",
+      "heat_per_cycle": 50,
+      "consumption_per_minute": 10,
+      "input_unit": "m³/min",
+      "operating_temperature_c": 1250,
+      "co2_output_m3_per_minute": 75,
+      "byproducts": [],
+      "game_class_name": "Desc_IonizedFuel_C",
+      "localized_names": {
+        "fr": "Carburant ionisé"
+      }
+    },
+    {
+      "fuel_id": "nuclear_fuel_rod",
+      "display_name": "Nuclear Fuel Rod",
+      "heater_id": "nuclear",
+      "heat_per_cycle": 2000,
+      "consumption_per_minute": 0.125,
+      "input_unit": "item/min",
+      "operating_temperature_c": 2000,
+      "co2_output_m3_per_minute": 0,
+      "byproducts": [
+        {
+          "resource_id": "nuclear_waste",
+          "display_name": "Nuclear Waste",
+          "rate_per_minute": 6.25,
+          "unit": "item/min",
+          "game_class_name": "Desc_NuclearWaste_C",
+          "localized_names": {
+            "fr": "Déchets d’uranium"
+          }
+        }
+      ],
+      "game_class_name": "Desc_NuclearFuelRod_C",
+      "localized_names": {
+        "fr": "Barre d’uranium"
+      }
+    },
+    {
+      "fuel_id": "plutonium",
+      "display_name": "Plutonium",
+      "heater_id": "nuclear",
+      "heat_per_cycle": 2000,
+      "consumption_per_minute": 0.0625,
+      "input_unit": "item/min",
+      "operating_temperature_c": 2000,
+      "co2_output_m3_per_minute": 0,
+      "byproducts": [
+        {
+          "resource_id": "plutonium_waste",
+          "display_name": "Plutonium Waste",
+          "rate_per_minute": 0.625,
+          "unit": "item/min",
+          "game_class_name": "Desc_PlutoniumWaste_C",
+          "localized_names": {
+            "fr": "Déchets de plutonium"
+          }
+        }
+      ],
+      "localized_names": {
+        "fr": "Plutonium"
+      }
+    },
+    {
+      "fuel_id": "dt_reactor_core",
+      "display_name": "DT Reactor Core",
+      "heater_id": "nuclear",
+      "heat_per_cycle": 2500,
+      "consumption_per_minute": 0.5,
+      "input_unit": "item/min",
+      "operating_temperature_c": 2000,
+      "co2_output_m3_per_minute": 0,
+      "byproducts": [
+        {
+          "resource_id": "advanced_reactor_core",
+          "display_name": "Advanced Reactor Core",
+          "rate_per_minute": 0.5,
+          "unit": "item/min",
+          "localized_names": {
+            "fr": "Cœur de réacteur avancé"
+          }
+        }
+      ],
+      "localized_names": {
+        "fr": "Cœur de réacteur DT"
+      }
+    },
+    {
+      "fuel_id": "deanorium_reactor_core",
+      "display_name": "Deanorium Reactor Core",
+      "heater_id": "nuclear",
+      "heat_per_cycle": 2500,
+      "consumption_per_minute": 0.125,
+      "input_unit": "item/min",
+      "operating_temperature_c": 2000,
+      "co2_output_m3_per_minute": 0,
+      "byproducts": [
+        {
+          "resource_id": "advanced_reactor_core",
+          "display_name": "Advanced Reactor Core",
+          "rate_per_minute": 0.125,
+          "unit": "item/min",
+          "localized_names": {
+            "fr": "Cœur de réacteur avancé"
+          }
+        }
+      ],
+      "localized_names": {
+        "fr": "Cœur de réacteur Deanorium"
+      }
+    },
+    {
+      "fuel_id": "ficsonium_fuel_rod",
+      "display_name": "Ficsonium Fuel Rod",
+      "heater_id": "nuclear",
+      "heat_per_cycle": 2500,
+      "consumption_per_minute": 0.667,
+      "input_unit": "item/min",
+      "operating_temperature_c": 2000,
+      "co2_output_m3_per_minute": 0,
+      "byproducts": [],
+      "game_class_name": "Desc_FicsoniumFuelRod_C",
+      "localized_names": {
+        "fr": "Barre de ficsonium"
+      }
+    }
   ],
   "boilers": [
-    {"boiler_id": "mk1", "display_name": "Boiler Mk.1", "operating_points": [
-      {"temperature_c": 500, "water_consumption_m3_per_minute": 45, "high_pressure_steam_m3_per_minute": 60},
-      {"temperature_c": 750, "water_consumption_m3_per_minute": 45, "high_pressure_steam_m3_per_minute": 60},
-      {"temperature_c": 1250, "water_consumption_m3_per_minute": 45, "high_pressure_steam_m3_per_minute": 60},
-      {"temperature_c": 2000, "water_consumption_m3_per_minute": 45, "high_pressure_steam_m3_per_minute": 60}
-    ]},
-    {"boiler_id": "mk2", "display_name": "Boiler Mk.2", "operating_points": [
-      {"temperature_c": 500, "water_consumption_m3_per_minute": 45, "high_pressure_steam_m3_per_minute": 60},
-      {"temperature_c": 750, "water_consumption_m3_per_minute": 90, "high_pressure_steam_m3_per_minute": 120},
-      {"temperature_c": 1250, "water_consumption_m3_per_minute": 270, "high_pressure_steam_m3_per_minute": 360},
-      {"temperature_c": 2000, "water_consumption_m3_per_minute": 450, "high_pressure_steam_m3_per_minute": 600}
-    ]}
+    {
+      "boiler_id": "mk1",
+      "display_name": "Boiler Mk.1",
+      "operating_points": [
+        {
+          "temperature_c": 500,
+          "water_consumption_m3_per_minute": 45,
+          "high_pressure_steam_m3_per_minute": 60
+        },
+        {
+          "temperature_c": 750,
+          "water_consumption_m3_per_minute": 45,
+          "high_pressure_steam_m3_per_minute": 60
+        },
+        {
+          "temperature_c": 1250,
+          "water_consumption_m3_per_minute": 45,
+          "high_pressure_steam_m3_per_minute": 60
+        },
+        {
+          "temperature_c": 2000,
+          "water_consumption_m3_per_minute": 45,
+          "high_pressure_steam_m3_per_minute": 60
+        }
+      ],
+      "localized_names": {
+        "fr": "Chaudière Mk.1"
+      }
+    },
+    {
+      "boiler_id": "mk2",
+      "display_name": "Boiler Mk.2",
+      "operating_points": [
+        {
+          "temperature_c": 500,
+          "water_consumption_m3_per_minute": 45,
+          "high_pressure_steam_m3_per_minute": 60
+        },
+        {
+          "temperature_c": 750,
+          "water_consumption_m3_per_minute": 90,
+          "high_pressure_steam_m3_per_minute": 120
+        },
+        {
+          "temperature_c": 1250,
+          "water_consumption_m3_per_minute": 270,
+          "high_pressure_steam_m3_per_minute": 360
+        },
+        {
+          "temperature_c": 2000,
+          "water_consumption_m3_per_minute": 450,
+          "high_pressure_steam_m3_per_minute": 600
+        }
+      ],
+      "localized_names": {
+        "fr": "Chaudière Mk.2"
+      }
+    }
   ],
   "turbines": [
-    {"turbine_id": "mk1", "display_name": "Turbine Mk.1", "high_pressure_steam_input_m3_per_minute": 60, "low_pressure_steam_output_m3_per_minute": 60, "maximum_rpm": 10000},
-    {"turbine_id": "mk2", "display_name": "Turbine Mk.2", "high_pressure_steam_input_m3_per_minute": 120, "low_pressure_steam_output_m3_per_minute": 120, "maximum_rpm": 25000}
+    {
+      "turbine_id": "mk1",
+      "display_name": "Turbine Mk.1",
+      "high_pressure_steam_input_m3_per_minute": 60,
+      "low_pressure_steam_output_m3_per_minute": 60,
+      "maximum_rpm": 10000,
+      "localized_names": {
+        "fr": "Turbine Mk.1"
+      }
+    },
+    {
+      "turbine_id": "mk2",
+      "display_name": "Turbine Mk.2",
+      "high_pressure_steam_input_m3_per_minute": 120,
+      "low_pressure_steam_output_m3_per_minute": 120,
+      "maximum_rpm": 25000,
+      "localized_names": {
+        "fr": "Turbine Mk.2"
+      }
+    }
   ],
   "generators": [
-    {"generator_id": "lv", "display_name": "LV Generator", "maximum_power_mw": 150, "required_rpm": 10000},
-    {"generator_id": "mv", "display_name": "MV Generator", "maximum_power_mw": 300, "required_rpm": 17000},
-    {"generator_id": "hv", "display_name": "HV Generator", "maximum_power_mw": 500, "required_rpm": 25000}
+    {
+      "generator_id": "lv",
+      "display_name": "LV Generator",
+      "maximum_power_mw": 150,
+      "required_rpm": 10000,
+      "localized_names": {
+        "fr": "Générateur basse tension (BT)"
+      }
+    },
+    {
+      "generator_id": "mv",
+      "display_name": "MV Generator",
+      "maximum_power_mw": 300,
+      "required_rpm": 17000,
+      "localized_names": {
+        "fr": "Générateur moyenne tension (MT)"
+      }
+    },
+    {
+      "generator_id": "hv",
+      "display_name": "HV Generator",
+      "maximum_power_mw": 500,
+      "required_rpm": 25000,
+      "localized_names": {
+        "fr": "Générateur haute tension (HT)"
+      }
+    }
   ],
   "generator_performance": [
-    {"turbine_id": "mk1", "generator_id": "lv", "maximum_power_mw_at_full_turbine_speed": 150},
-    {"turbine_id": "mk1", "generator_id": "mv", "maximum_power_mw_at_full_turbine_speed": 181.9},
-    {"turbine_id": "mk1", "generator_id": "hv", "maximum_power_mw_at_full_turbine_speed": 176},
-    {"turbine_id": "mk2", "generator_id": "lv", "maximum_power_mw_at_full_turbine_speed": 150},
-    {"turbine_id": "mk2", "generator_id": "mv", "maximum_power_mw_at_full_turbine_speed": 300},
-    {"turbine_id": "mk2", "generator_id": "hv", "maximum_power_mw_at_full_turbine_speed": 500}
+    {
+      "turbine_id": "mk1",
+      "generator_id": "lv",
+      "maximum_power_mw_at_full_turbine_speed": 150
+    },
+    {
+      "turbine_id": "mk1",
+      "generator_id": "mv",
+      "maximum_power_mw_at_full_turbine_speed": 181.9
+    },
+    {
+      "turbine_id": "mk1",
+      "generator_id": "hv",
+      "maximum_power_mw_at_full_turbine_speed": 176
+    },
+    {
+      "turbine_id": "mk2",
+      "generator_id": "lv",
+      "maximum_power_mw_at_full_turbine_speed": 150
+    },
+    {
+      "turbine_id": "mk2",
+      "generator_id": "mv",
+      "maximum_power_mw_at_full_turbine_speed": 300
+    },
+    {
+      "turbine_id": "mk2",
+      "generator_id": "hv",
+      "maximum_power_mw_at_full_turbine_speed": 500
+    }
   ],
   "ventilation": {
     "co2_chimney_capacity_m3_per_minute": 150,
