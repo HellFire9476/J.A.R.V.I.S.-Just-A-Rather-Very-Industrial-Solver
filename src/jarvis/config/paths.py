@@ -22,6 +22,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 # ==========================================================
 
 RESOURCES_DIR = PROJECT_ROOT / "resources"
+REFINED_POWER_CATALOG_FILE = (
+    RESOURCES_DIR / "catalogs" / "refined_power" / "modular_power.json"
+)
 STYLES_DIR = RESOURCES_DIR / "styles"
 MAIN_STYLESHEET = STYLES_DIR / "main.qss"
 

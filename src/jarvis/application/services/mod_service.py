@@ -30,8 +30,9 @@ MOD_DEFINITIONS: tuple[ModDefinition, ...] = (
             "Bilans de combustible, d'eau, de vapeur et de consommation auxiliaire.",
         ),
         integration_note=(
-            "L'activation par parc est disponible. Les équipements et le moteur "
-            "de calcul Refined Power seront intégrés dans les prochaines étapes."
+            "Le moteur de calcul Modular Power et la persistance des chaînes par parc "
+            "sont disponibles dans le socle applicatif. L'écran de configuration, les "
+            "sources directes, les réacteurs et Project Icarus restent à développer."
         ),
     ),
     ModDefinition(

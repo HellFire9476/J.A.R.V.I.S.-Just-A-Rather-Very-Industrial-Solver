@@ -35,9 +35,13 @@ Chaque parc est indépendant. Ajouter Refined Power à un parc ne l'ajoute pas a
 
 Désactiver un module ne supprime pas son objet `configuration`. Cela permet de le réactiver plus tard sans perdre ses paramètres.
 
-## État de cette première étape
+## État de l'intégration
 
-Cette première étape fournit le catalogue, l'écran de gestion autonome, la sélection d'une partie puis d'un parc, l'activation/désactivation et la persistance JSON. Les équipements et les calculateurs Refined Power et Digital Storage ne sont pas encore implémentés dans cette étape ; l'interface l'indique explicitement. Ils seront ajoutés séparément et raccordés aux bilans de production, d'énergie et de réseau.
+Le gestionnaire fournit le catalogue des modules, l'écran de gestion autonome, la sélection d'une partie puis d'un parc, l'activation/désactivation et la persistance JSON.
+
+Pour **Refined Power**, le socle Modular Power comprend maintenant un catalogue technique versionné, des modèles de chaînes par parc, un moteur de calcul en régime permanent et un service de persistance. L'écran de configuration reste à construire. Les sources directes, les réacteurs et Project Icarus restent hors périmètre de cette première livraison.
+
+Pour **Digital Storage**, les équipements, capacités, débits et calculs ne sont pas encore implémentés.
 
 La gestion des mods dans J.A.R.V.I.S. ne télécharge pas, n'installe pas et ne vérifie pas les mods présents dans le dossier du jeu.
 
