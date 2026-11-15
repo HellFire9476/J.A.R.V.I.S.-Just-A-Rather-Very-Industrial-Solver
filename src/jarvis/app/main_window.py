@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from jarvis.app.navigation import PlaceholderPage
+from jarvis.application.services.production_service import ProductionService
 from jarvis.application.services.recipe_service import RecipeService
 from jarvis.domain.entities.project import Project
 from jarvis.presentation.pages.archives.page import ArchivesPage
@@ -17,6 +18,7 @@ from jarvis.presentation.pages.dashboard.page import DashboardPage
 from jarvis.presentation.pages.parks.page import ParksPage
 from jarvis.presentation.pages.projects.page import ProjectPage
 from jarvis.presentation.pages.recipes.page import RecipesPage
+from jarvis.presentation.pages.simulations.page import SimulationsPage
 from jarvis.presentation.widgets.sidebar import Sidebar
 
 
@@ -37,10 +39,6 @@ class MainWindow(QMainWindow):
         "energy": (
             "Énergie",
             "Gestion de votre production énergétique.",
-        ),
-        "simulations": (
-            "Simulations",
-            "Analyse des déficits et optimisation industrielle.",
         ),
     }
 
@@ -135,6 +133,10 @@ class MainWindow(QMainWindow):
         self.recipes_page = RecipesPage(RecipeService())
         self._register_page("recipes", self.recipes_page)
 
+        # Simulations : interface de pilotage du moteur de production.
+        self.simulations_page = SimulationsPage(ProductionService())
+        self._register_page("simulations", self.simulations_page)
+
         # Centre d'archives
         self.archives_page = ArchivesPage()
         self._register_page("archives", self.archives_page)
@@ -188,6 +190,9 @@ class MainWindow(QMainWindow):
         elif page_id == "recipes":
             self.recipes_page.refresh()
 
+        elif page_id == "simulations":
+            self.simulations_page.refresh()
+
     def _open_parks_from_dashboard(self):
         """Accède aux parcs ou à la gestion des projets."""
 
@@ -202,6 +207,7 @@ class MainWindow(QMainWindow):
         self.active_project = project
 
         self.parks_page.set_project(project)
+        self.simulations_page.set_project(project)
 
         self.project_status.setText(
             f"●  {project.name.upper()}"
@@ -224,6 +230,7 @@ class MainWindow(QMainWindow):
         ):
             self.active_project = project
             self.parks_page.set_project(project)
+            self.simulations_page.set_project(project)
 
             self.project_status.setText(
                 f"●  {project.name.upper()}"
@@ -246,6 +253,7 @@ class MainWindow(QMainWindow):
         ):
             self.active_project = None
             self.parks_page.set_project(None)
+            self.simulations_page.set_project(None)
 
             self.project_status.setText(
                 "●  AUCUN PROJET CHARGÉ"
@@ -264,3 +272,9 @@ class MainWindow(QMainWindow):
         if self.page_stack.currentWidget() is not self.projects_page:
             self.page_stack.setCurrentWidget(self.projects_page)
             self.sidebar.set_active("projects")
+
+    def closeEvent(self, event):
+        """Attend les calculs en cours avant de détruire les threads Qt."""
+
+        self.simulations_page.shutdown()
+        super().closeEvent(event)

@@ -275,3 +275,52 @@ def test_production_service_rejects_missing_catalog(tmp_path):
             target_class_name="Desc_IronPlate_C",
             target_rate_per_minute=60,
         )
+
+
+def test_production_service_exposes_automatable_target_catalog(tmp_path):
+    catalog_dir = _write_catalog(tmp_path)
+    service = ProductionService(catalog_dir)
+
+    targets, recipes_by_product = service.get_target_catalog("fr")
+    target_classes = {item.class_name for item in targets}
+
+    assert {
+        "Desc_IronIngot_C",
+        "Desc_IronPlate_C",
+        "Desc_Plastic_C",
+        "Desc_HeavyOilResidue_C",
+    }.issubset(target_classes)
+    assert "Desc_OreIron_C" not in target_classes
+    assert [
+        recipe.class_name for recipe in recipes_by_product["Desc_IronPlate_C"]
+    ] == ["Recipe_IronPlate_C"]
+    assert service.list_locales() == ["fr"]
+
+
+def test_production_service_applies_machine_and_extractor_clock_limits(tmp_path):
+    catalog_dir = _write_catalog(tmp_path)
+
+    plan = ProductionService(catalog_dir).plan_production(
+        target_class_name="Desc_IronPlate_C",
+        target_rate_per_minute=25,
+        machine_clock_limits={
+            "Recipe_IronPlate_C": "125",
+            "Recipe_IronIngot_C": "125",
+        },
+        extractor_clock_limits={"Desc_OreIron_C": "125"},
+    )
+
+    lines = {line.recipe_class: line for line in plan.machine_requirements}
+    assert lines["Recipe_IronPlate_C"].machine_count == 1
+    assert lines["Recipe_IronPlate_C"].clock_limit_percent == Decimal("125")
+    assert lines["Recipe_IronPlate_C"].clock_percent == Decimal("125.00")
+    assert lines["Recipe_IronIngot_C"].machine_count == 1
+    assert lines["Recipe_IronIngot_C"].clock_percent == Decimal("125.00")
+
+    ore = plan.resource_requirements[0]
+    option = next(
+        entry
+        for entry in ore.extraction_options
+        if entry.extractor_class == ore.selected_extractor_class
+    )
+    assert option.clock_limit_percent == Decimal("125")

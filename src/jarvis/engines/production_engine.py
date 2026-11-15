@@ -52,7 +52,18 @@ class InvalidRecipeChoiceError(ProductionCalculationError):
 
 
 class ProducerChoiceRequiredError(ProductionCalculationError):
-    """Plusieurs fabricants automatisés peuvent exécuter une recette."""
+    """Un choix de fabricant est nécessaire pour exécuter une recette."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        recipe_class: str | None = None,
+        producer_classes: Sequence[str] = (),
+    ) -> None:
+        self.recipe_class = recipe_class
+        self.producer_classes = tuple(producer_classes)
+        super().__init__(message)
 
 
 class NonAutomatableRecipeError(ProductionCalculationError):
@@ -69,6 +80,10 @@ class InvalidProductionRateError(ProductionCalculationError):
 
 class InvalidExtractorChoiceError(ProductionCalculationError):
     """L'extracteur choisi ne peut pas fournir la ressource."""
+
+
+class InvalidClockSettingError(ProductionCalculationError):
+    """Une limite de cadence est en dehors des limites autorisées du jeu."""
 
 
 class ProductionEngine:
@@ -110,6 +125,8 @@ class ProductionEngine:
         recipe_choices: Mapping[str, str] | None = None,
         producer_choices: Mapping[str, str] | None = None,
         extractor_choices: Mapping[str, str] | None = None,
+        machine_clock_limits: Mapping[str, Decimal | int | float | str] | None = None,
+        extractor_clock_limits: Mapping[str, Decimal | int | float | str] | None = None,
         resource_node_multipliers: Mapping[str, Decimal | int | float | str] | None = None,
     ) -> ProductionPlan:
         """Décompose un débit cible en recettes, matières premières et machines."""
@@ -126,7 +143,11 @@ class ProductionEngine:
         recipe_choices = recipe_choices or {}
         producer_choices = producer_choices or {}
         extractor_choices = extractor_choices or {}
+        machine_clock_limits = machine_clock_limits or {}
+        extractor_clock_limits = extractor_clock_limits or {}
         resource_node_multipliers = resource_node_multipliers or {}
+        self._machine_clock_limits = dict(machine_clock_limits)
+        self._extractor_clock_limits = dict(extractor_clock_limits)
 
         self._recipe_cycles: dict[str, Decimal] = defaultdict(lambda: ZERO)
         self._selected_recipes: dict[str, Recipe] = {}
@@ -146,6 +167,7 @@ class ProductionEngine:
         machine_requirements = self._build_machine_requirements()
         resource_requirements = self._build_resource_requirements(
             extractor_choices,
+            extractor_clock_limits,
             resource_node_multipliers,
         )
         if self._byproducts:
@@ -311,7 +333,9 @@ class ProductionEngine:
             )
             if selected is None:
                 raise ProducerChoiceRequiredError(
-                    f"Le fabricant {explicit_choice} ne peut pas exécuter {recipe.class_name}."
+                    f"Le fabricant {explicit_choice} ne peut pas exécuter {recipe.class_name}.",
+                    recipe_class=recipe.class_name,
+                    producer_classes=tuple(machine.class_name for machine in candidates),
                 )
             return selected
         if not candidates:
@@ -322,7 +346,11 @@ class ProductionEngine:
         if len(candidates) > 1:
             names = ", ".join(sorted(machine.class_name for machine in candidates))
             raise ProducerChoiceRequiredError(
-                f"Plusieurs fabricants sont possibles pour {recipe.class_name} : {names}."
+                f"Plusieurs fabricants sont possibles pour {recipe.class_name} : {names}.",
+                recipe_class=recipe.class_name,
+                producer_classes=tuple(
+                    sorted(machine.class_name for machine in candidates)
+                ),
             )
         return candidates[0]
 
@@ -335,7 +363,16 @@ class ProductionEngine:
                 SIXTY / recipe.duration_seconds * machine.manufacturing_speed
             )
             equivalents = cycles_per_minute / cycles_per_machine_minute
-            machine_count = self._ceil_positive(equivalents)
+            clock_limit_percent = self._validated_clock_limit_percent(
+                self._machine_clock_limits.get(recipe_class, Decimal("100")),
+                machine.minimum_clock_fraction,
+                machine.maximum_clock_fraction,
+                f"La limite de cadence de {machine.display_name} doit être comprise "
+                f"entre {machine.minimum_clock_fraction * Decimal('100')} et "
+                f"{machine.maximum_clock_fraction * Decimal('100')} %.",
+            )
+            clock_limit_fraction = clock_limit_percent / Decimal("100")
+            machine_count = self._ceil_positive(equivalents / clock_limit_fraction)
             clock_fraction = equivalents / Decimal(machine_count)
             clock_percent = clock_fraction * Decimal("100")
 
@@ -377,6 +414,7 @@ class ProductionEngine:
                     machine_equivalents=equivalents,
                     machine_count=machine_count,
                     clock_percent=clock_percent,
+                    clock_limit_percent=clock_limit_percent,
                     inputs=self._build_rate_amounts(recipe_input_rates),
                     outputs=self._build_rate_amounts(recipe_output_rates),
                     power_min_mw=power_min,
@@ -389,6 +427,7 @@ class ProductionEngine:
     def _build_resource_requirements(
         self,
         extractor_choices: Mapping[str, str],
+        extractor_clock_limits: Mapping[str, Decimal | int | float | str],
         node_multipliers: Mapping[str, Decimal | int | float | str],
     ) -> tuple[ResourceRequirement, ...]:
         requirements: list[ResourceRequirement] = []
@@ -417,7 +456,16 @@ class ProductionEngine:
                 applied_multiplier = multiplier if profile.node_based else Decimal("1")
                 effective_rate = profile.base_rate_per_minute * applied_multiplier
                 equivalents = required_rate / effective_rate
-                machine_count = self._ceil_positive(equivalents)
+                clock_limit_percent = self._validated_clock_limit_percent(
+                    extractor_clock_limits.get(item_class, Decimal("100")),
+                    profile.minimum_clock_fraction,
+                    profile.maximum_clock_fraction,
+                    f"La limite de cadence de {profile.display_name} doit être comprise "
+                    f"entre {profile.minimum_clock_fraction * Decimal('100')} et "
+                    f"{profile.maximum_clock_fraction * Decimal('100')} %.",
+                )
+                clock_limit_fraction = clock_limit_percent / Decimal("100")
+                machine_count = self._ceil_positive(equivalents / clock_limit_fraction)
                 clock_fraction = equivalents / Decimal(machine_count)
                 power_min, power_max, power_model = self._extractor_power(
                     profile,
@@ -433,6 +481,7 @@ class ProductionEngine:
                         machine_equivalents=equivalents,
                         machine_count=machine_count,
                         clock_percent=clock_fraction * Decimal("100"),
+                        clock_limit_percent=clock_limit_percent,
                         power_min_mw=power_min,
                         power_max_mw=power_max,
                         power_model=power_model,
@@ -611,6 +660,21 @@ class ProductionEngine:
             minimum += selected.power_min_mw
             maximum += selected.power_max_mw
         return minimum, maximum, complete
+
+    @classmethod
+    def _validated_clock_limit_percent(
+        cls,
+        value: Decimal | int | float | str,
+        minimum_fraction: Decimal,
+        maximum_fraction: Decimal,
+        message: str,
+    ) -> Decimal:
+        limit = cls._positive_decimal(value, message)
+        minimum = minimum_fraction * Decimal("100")
+        maximum = maximum_fraction * Decimal("100")
+        if limit < minimum or limit > maximum:
+            raise InvalidClockSettingError(message)
+        return limit
 
     @staticmethod
     def _positive_decimal(value: Decimal | int | float | str, message: str) -> Decimal:

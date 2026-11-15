@@ -15,6 +15,7 @@ from jarvis.domain.entities.production import (
     MachineProfile,
     ProductionPlan,
 )
+from jarvis.domain.entities.recipe import Recipe
 from jarvis.engines.production_engine import ProductionEngine
 from jarvis.infrastructure.persistence.catalog_repository import CatalogRepository
 
@@ -63,6 +64,8 @@ class ProductionService:
         recipe_choices: Mapping[str, str] | None = None,
         producer_choices: Mapping[str, str] | None = None,
         extractor_choices: Mapping[str, str] | None = None,
+        machine_clock_limits: Mapping[str, Decimal | int | float | str] | None = None,
+        extractor_clock_limits: Mapping[str, Decimal | int | float | str] | None = None,
         resource_node_multipliers: Mapping[str, Decimal | int | float | str] | None = None,
     ) -> ProductionPlan:
         """Calcule un objectif en objets/min ou m³/min."""
@@ -89,11 +92,67 @@ class ProductionService:
             recipe_choices=recipe_choices,
             producer_choices=producer_choices,
             extractor_choices=extractor_choices,
+            machine_clock_limits=machine_clock_limits,
+            extractor_clock_limits=extractor_clock_limits,
             resource_node_multipliers=resource_node_multipliers,
         )
 
+    def list_locales(self) -> list[str]:
+        """Retourne les langues disponibles dans le catalogue installé."""
+
+        return self.repository.list_locales()
+
+    def get_target_catalog(
+        self,
+        locale: str = "fr",
+    ) -> tuple[tuple[ItemProfile, ...], dict[str, tuple[Recipe, ...]]]:
+        """Construit les cibles automatisables et leurs recettes candidates.
+
+        Les données sont préparées en une seule lecture afin que l'interface
+        puisse les charger en arrière-plan, sans reparcourir les 872 recettes
+        à chaque changement de produit.
+        """
+
+        if not self.repository.is_initialized:
+            raise FileNotFoundError(
+                "Le catalogue Satisfactory n'est pas installé. Importez d'abord un export."
+            )
+
+        recipes = self.recipe_service.list_recipes(locale)
+        item_profiles = self._build_item_profiles(recipes, locale)
+        recipes_by_product: dict[str, list[Recipe]] = {}
+        automatable_targets: set[str] = set()
+
+        for recipe in recipes:
+            has_automated_producer = any(
+                producer.producer_type == "manufacturer"
+                for producer in recipe.producers
+            )
+            if not has_automated_producer:
+                continue
+            for product in recipe.products:
+                recipes_by_product.setdefault(product.class_name, []).append(recipe)
+                automatable_targets.add(product.class_name)
+
+        targets = tuple(
+            sorted(
+                (
+                    item_profiles[class_name]
+                    for class_name in automatable_targets
+                    if class_name in item_profiles
+                ),
+                key=lambda item: (item.display_name.casefold(), item.class_name),
+            )
+        )
+        options = {
+            class_name: tuple(recipes_by_product[class_name])
+            for class_name in automatable_targets
+            if class_name in recipes_by_product
+        }
+        return targets, options
+
     def list_recipe_options(self, item_class_name: str, locale: str = "fr"):
-        """Retourne les recettes candidates pour alimenter un futur sélecteur."""
+        """Retourne les recettes candidates pour un objet donné."""
 
         return tuple(
             recipe
@@ -170,11 +229,9 @@ class ProductionService:
                     "mMinPotential",
                     Decimal("0.01"),
                 ),
-                maximum_clock_fraction=self._decimal(
-                    properties,
-                    "mMaxPotential",
-                    Decimal("1"),
-                ),
+                # Le plafond de jeu pour l'overclock des bâtiments est 250 %.
+                # mMaxPotential dans l'export décrit un potentiel courant, pas la limite joueur.
+                maximum_clock_fraction=Decimal("2.5"),
             )
         return profiles
 
@@ -253,6 +310,8 @@ class ProductionService:
                         properties,
                         "mEstimatedMaximumPowerConsumption",
                     ),
+                    minimum_clock_fraction=Decimal("0.01"),
+                    maximum_clock_fraction=Decimal("2.5"),
                 )
             )
         return tuple(profiles)

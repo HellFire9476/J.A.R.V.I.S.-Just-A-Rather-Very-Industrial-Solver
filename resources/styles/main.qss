@@ -697,3 +697,128 @@ QFrame#CatalogSeparator {
     color: #354555;
     max-height: 1px;
 }
+
+
+/* ==========================================
+   SIMULATIONS DE PRODUCTION
+   ========================================== */
+
+QFrame#SimulationControls,
+QFrame#SimulationPanel,
+QFrame#SimulationMetricCard {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 9px;
+}
+
+QLabel#SimulationProjectLabel {
+    color: #EAA04A;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+QComboBox#SimulationInput,
+QDoubleSpinBox#SimulationInput {
+    background-color: #151F29;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 6px;
+    padding: 8px 10px;
+    min-height: 21px;
+}
+
+QComboBox#SimulationInput:focus,
+QDoubleSpinBox#SimulationInput:focus {
+    border: 1px solid #B87930;
+}
+
+QComboBox#SimulationInput QAbstractItemView {
+    background-color: #1B2631;
+    color: #E6EDF3;
+    selection-background-color: #3B3022;
+    selection-color: #F5B568;
+    border: 1px solid #354555;
+}
+
+QLabel#SimulationStatus {
+    color: #91A2B2;
+    font-size: 9pt;
+    padding: 3px 2px;
+}
+
+QLabel#SimulationMetricLabel {
+    color: #94A5B5;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#SimulationMetricValue {
+    color: #F5B568;
+    font-size: 18pt;
+    font-weight: 700;
+}
+
+QTableWidget#SimulationTable {
+    background-color: #151F29;
+    alternate-background-color: #19242F;
+    color: #DCE5ED;
+    border: 1px solid #2D3A48;
+    border-radius: 6px;
+    selection-background-color: #3B3022;
+    selection-color: #F5B568;
+    outline: none;
+}
+
+QTableWidget#SimulationTable::item {
+    padding: 6px 7px;
+    border: none;
+}
+
+QTableWidget#SimulationTable QHeaderView::section {
+    background-color: #202D39;
+    color: #9EAFBF;
+    border: none;
+    border-bottom: 1px solid #354555;
+    padding: 8px 7px;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QComboBox#SimulationInlineSelector {
+    background-color: #202D39;
+    color: #E6EDF3;
+    border: 1px solid #354555;
+    border-radius: 4px;
+    padding: 5px 6px;
+    min-height: 22px;
+}
+
+QDoubleSpinBox#SimulationClockSpin {
+    background-color: #202D39;
+    color: #E6EDF3;
+    border: 1px solid #46596B;
+    border-radius: 4px;
+    padding: 4px 5px;
+    min-height: 22px;
+}
+
+QDoubleSpinBox#SimulationClockSpin:focus {
+    border: 1px solid #D58B3B;
+}
+
+QLabel#SimulationHelpText {
+    color: #91A2B2;
+    font-size: 8pt;
+    padding: 0 2px 2px 2px;
+}
+
+QLabel#SimulationWarningText {
+    color: #B8C5D0;
+    font-size: 9pt;
+}
+
+QScrollArea#SimulationResultsScroll {
+    background-color: transparent;
+    border: none;
+}

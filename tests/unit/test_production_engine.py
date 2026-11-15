@@ -14,6 +14,7 @@ from jarvis.domain.entities.production import (
 )
 from jarvis.domain.entities.recipe import Recipe, RecipeComponent, RecipeProducer
 from jarvis.engines.production_engine import (
+    InvalidClockSettingError,
     InvalidExtractorChoiceError,
     InvalidProductionRateError,
     InvalidRecipeChoiceError,
@@ -385,12 +386,18 @@ def test_engine_requires_producer_choice_when_several_automated_machines_exist()
         (_item("Desc_Input_C"), _item("Desc_Output_C")),
     )
 
-    with pytest.raises(ProducerChoiceRequiredError):
+    with pytest.raises(ProducerChoiceRequiredError) as error:
         engine.plan(
             target_class_name="Desc_Output_C",
             target_rate_per_minute=1,
             locale="fr",
         )
+
+    assert error.value.recipe_class == "Recipe_Output_C"
+    assert set(error.value.producer_classes) == {
+        "Build_ConstructorMk1_C",
+        "Build_AssemblerMk1_C",
+    }
 
     plan = engine.plan(
         target_class_name="Desc_Output_C",
@@ -512,4 +519,82 @@ def test_engine_rejects_invalid_target_and_choices():
             target_rate_per_minute=1,
             locale="fr",
             extractor_choices={"Desc_Input_C": "Build_NotMiner_C"},
+        )
+
+
+def test_engine_applies_machine_clock_limit_and_reduces_machine_count():
+    recipe = _recipe(
+        "Recipe_ClockedProduct_C",
+        ingredients=(_component("Desc_RawInput_C", "1"),),
+        products=(_component("Desc_ClockedProduct_C", "2"),),
+        duration="6",
+    )
+    engine = _engine(
+        (recipe,),
+        (_item("Desc_RawInput_C"), _item("Desc_ClockedProduct_C")),
+    )
+
+    plan = engine.plan(
+        target_class_name="Desc_ClockedProduct_C",
+        target_rate_per_minute=25,
+        locale="fr",
+        machine_clock_limits={"Recipe_ClockedProduct_C": "125"},
+    )
+
+    requirement = plan.machine_requirements[0]
+    assert requirement.machine_equivalents == Decimal("1.25")
+    assert requirement.machine_count == 1
+    assert requirement.clock_limit_percent == Decimal("125")
+    assert requirement.clock_percent == Decimal("125.00")
+
+
+def test_engine_applies_extractor_clock_limit_and_reduces_extractor_count():
+    extractor = ExtractorProfile(
+        class_name="Build_MinerMk2_C",
+        display_name="Foreuse Mk.2",
+        base_rate_per_minute=Decimal("120"),
+        form="RF_SOLID",
+        allowed_forms=frozenset({"RF_SOLID"}),
+        fixed_power_mw=Decimal("15"),
+    )
+    engine = _engine(
+        (),
+        (_item("Desc_Coal_C", native_class="FGResourceDescriptor"),),
+        extractors=(extractor,),
+    )
+
+    plan = engine.plan(
+        target_class_name="Desc_Coal_C",
+        target_rate_per_minute=150,
+        locale="fr",
+        extractor_clock_limits={"Desc_Coal_C": "125"},
+    )
+
+    option = plan.resource_requirements[0].extraction_options[0]
+    assert option.machine_equivalents == Decimal("1.25")
+    assert option.machine_count == 1
+    assert option.clock_limit_percent == Decimal("125")
+    assert option.clock_percent == Decimal("125.00")
+    assert option.power_min_mw == option.power_max_mw
+    assert option.power_min_mw > Decimal("15")
+
+
+def test_engine_rejects_clock_limit_above_game_maximum():
+    recipe = _recipe(
+        "Recipe_ClockedProduct_C",
+        ingredients=(_component("Desc_RawInput_C", "1"),),
+        products=(_component("Desc_ClockedProduct_C", "2"),),
+        duration="6",
+    )
+    engine = _engine(
+        (recipe,),
+        (_item("Desc_RawInput_C"), _item("Desc_ClockedProduct_C")),
+    )
+
+    with pytest.raises(InvalidClockSettingError):
+        engine.plan(
+            target_class_name="Desc_ClockedProduct_C",
+            target_rate_per_minute=25,
+            locale="fr",
+            machine_clock_limits={"Recipe_ClockedProduct_C": "251"},
         )

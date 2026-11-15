@@ -43,7 +43,7 @@ class MachineProfile:
     estimated_power_min_mw: Decimal | None = None
     estimated_power_max_mw: Decimal | None = None
     minimum_clock_fraction: Decimal = Decimal("0.01")
-    maximum_clock_fraction: Decimal = Decimal("1")
+    maximum_clock_fraction: Decimal = Decimal("2.5")
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +63,8 @@ class ExtractorProfile:
     power_exponent: Decimal = Decimal("1.321929")
     estimated_power_min_mw: Decimal | None = None
     estimated_power_max_mw: Decimal | None = None
+    minimum_clock_fraction: Decimal = Decimal("0.01")
+    maximum_clock_fraction: Decimal = Decimal("2.5")
 
     def supports(self, item: ItemProfile) -> bool:
         if item.form not in self.allowed_forms:
@@ -95,6 +97,7 @@ class MachineRequirement:
     machine_equivalents: Decimal
     machine_count: int
     clock_percent: Decimal
+    clock_limit_percent: Decimal
     inputs: tuple[RateAmount, ...]
     outputs: tuple[RateAmount, ...]
     power_min_mw: Decimal | None
@@ -113,6 +116,7 @@ class ExtractionOption:
     machine_equivalents: Decimal
     machine_count: int
     clock_percent: Decimal
+    clock_limit_percent: Decimal
     power_min_mw: Decimal | None
     power_max_mw: Decimal | None
     power_model: str
