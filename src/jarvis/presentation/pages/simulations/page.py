@@ -27,7 +27,6 @@ from PySide6.QtWidgets import (
 
 from jarvis.application.services.production_service import ProductionService
 from jarvis.domain.entities.production import ItemProfile, ProductionPlan
-from jarvis.domain.entities.project import Project
 from jarvis.domain.entities.recipe import Recipe, RecipeComponent
 from jarvis.engines.production_engine import (
     ProducerChoiceRequiredError,
@@ -104,7 +103,6 @@ class SimulationsPage(QWidget):
     ) -> None:
         super().__init__(parent)
         self.service = service or ProductionService()
-        self.project: Project | None = None
         self._catalog_loaded = False
         self._catalog_loading = False
         self._plan_loading = False
@@ -138,8 +136,9 @@ class SimulationsPage(QWidget):
             "l'objectif sélectionné."
         )
         subtitle = QLabel(
-            "Définissez un objectif de fabrication et laissez J.A.R.V.I.S. décomposer "
-            "les recettes, les ressources, les fabricants et la puissance nécessaire."
+            "Définissez un objectif de fabrication à partir du catalogue Satisfactory : "
+            "J.A.R.V.I.S. calcule les besoins théoriques en ressources, les fabricants, "
+            "les extracteurs et la puissance nécessaire."
         )
         subtitle.setObjectName("PageSubtitle")
         subtitle.setWordWrap(True)
@@ -150,14 +149,18 @@ class SimulationsPage(QWidget):
         root.addWidget(title)
         root.addWidget(subtitle)
 
-        self.project_label = QLabel("PROJET ACTIF : aucun projet")
-        self.project_label.setObjectName("SimulationProjectLabel")
-        self.project_label.setToolTip(
-            "La simulation est réalisée dans le contexte du projet actuellement ouvert. "
-            "Cette version affiche un calcul consultatif : elle n'enregistre pas encore "
-            "le scénario dans le projet."
+        self.scope_label = QLabel(
+            "CALCUL THÉORIQUE · INDÉPENDANT DES PARTIES ET DES PARCS"
         )
-        root.addWidget(self.project_label)
+        self.scope_label.setObjectName("SimulationScopeLabel")
+        self.scope_label.setToolTip(
+            "Cette rubrique ne dépend d'aucune partie ni d'aucun parc. Elle utilise "
+            "le catalogue technique Satisfactory, l'objectif de production et les "
+            "choix de recettes ou d'extracteurs. Les ressources et les bâtiments "
+            "sont calculés théoriquement : aucun stock, bâtiment posé ou équipement "
+            "possédé dans une sauvegarde n'est consulté."
+        )
+        root.addWidget(self.scope_label)
 
         controls = QFrame()
         controls.setObjectName("SimulationControls")
@@ -555,11 +558,6 @@ class SimulationsPage(QWidget):
             layout.addWidget(help_label)
         layout.addWidget(table)
         self.results_layout.addWidget(panel)
-
-    def set_project(self, project: Project | None) -> None:
-        self.project = project
-        name = project.name if project is not None else "aucun projet"
-        self.project_label.setText(f"PROJET ACTIF : {name}")
 
     def refresh(self) -> None:
         """Charge le catalogue à la première ouverture de la rubrique."""

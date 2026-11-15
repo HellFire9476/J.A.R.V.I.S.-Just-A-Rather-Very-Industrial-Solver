@@ -2,7 +2,9 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from jarvis.domain.entities.mod import ParkModInstallation
 
 
 class Park(BaseModel):
@@ -13,7 +15,7 @@ class Park(BaseModel):
         validate_assignment=True,
     )
 
-    schema_version: int = Field(default=1, ge=1)
+    schema_version: int = Field(default=2, ge=1)
 
     id: UUID = Field(default_factory=uuid4)
 
@@ -34,6 +36,10 @@ class Park(BaseModel):
         max_length=120,
     )
 
+    # Chaque parc possède ses propres activations et paramètres de modules.
+    # Une configuration reste conservée même lorsque le module est désactivé.
+    mods: dict[str, ParkModInstallation] = Field(default_factory=dict)
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC)
     )
@@ -41,6 +47,26 @@ class Park(BaseModel):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC)
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_schema(cls, value):
+        """Migre les anciens park.json sans configuration de mods."""
+
+        if not isinstance(value, dict):
+            return value
+
+        data = dict(value)
+        try:
+            version = int(data.get("schema_version", 1))
+        except (TypeError, ValueError):
+            return data
+
+        if version == 1:
+            data.setdefault("mods", {})
+            data["schema_version"] = 2
+
+        return data
 
     @field_validator("name", mode="before")
     @classmethod

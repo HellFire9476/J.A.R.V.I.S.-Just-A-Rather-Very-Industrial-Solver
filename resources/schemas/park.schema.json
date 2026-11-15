@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/schemas/park.schema.json",
+  "title": "J.A.R.V.I.S. Park",
+  "description": "Parc industriel et activations de modules propres à ce parc.",
+  "type": "object",
+  "required": ["schema_version", "id", "project_id", "name"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 2 },
+    "id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "maxLength": 500 },
+    "location": { "type": ["string", "null"], "maxLength": 120 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "mods": {
+      "type": "object",
+      "description": "Configuration indépendante de chaque module dans ce parc.",
+      "additionalProperties": { "$ref": "#/$defs/parkModInstallation" }
+    }
+  },
+  "$defs": {
+    "parkModInstallation": {
+      "type": "object",
+      "required": ["enabled", "configuration"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "configuration": {
+          "type": "object",
+          "description": "Paramètres propres au module ; conservés même lorsqu'il est désactivé."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -27,6 +27,7 @@ class Sidebar(QWidget):
         ("network", "hierarchy-2", "Réseau industriel"),
         ("extraction", "shovel", "Extraction"),
         ("energy", "bolt", "Énergie"),
+        ("mods", "puzzle", "Mods & extensions"),
         ("recipes", "book-2", "Recettes"),
         ("simulations", "flask-2", "Simulations"),
         ("projects", "folder", "Mes projets"),

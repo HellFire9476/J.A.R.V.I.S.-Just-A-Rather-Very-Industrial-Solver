@@ -152,7 +152,7 @@ def test_simulations_controls_and_table_headers_have_tooltips() -> None:
     page = _new_page()
 
     for widget in (
-        page.project_label,
+        page.scope_label,
         page.target_combo,
         page.target_combo.lineEdit(),
         page.rate_spin,

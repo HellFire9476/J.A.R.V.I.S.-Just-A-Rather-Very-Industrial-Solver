@@ -3,8 +3,10 @@
 ## Objectif
 
 La page Simulations expose le moteur de production à l'utilisateur sans déplacer
-la logique de calcul dans PySide6. Elle est rattachée au projet actif et lit le
-catalogue Satisfactory local.
+la logique de calcul dans PySide6. Elle est indépendante des parties et des parcs :
+elle lit le catalogue Satisfactory local et calcule un besoin théorique à partir
+d'un objectif de production et des recettes disponibles. Aucun stock, bâtiment
+posé ou équipement possédé dans une sauvegarde n'est consulté.
 
 ## Parcours utilisateur
 
@@ -44,7 +46,8 @@ la destruction d'un thread Qt encore actif.
   d'autres branches.
 - Les calculs de réseaux de puits et leurs pressuriseurs restent signalés comme
   incomplets par le moteur.
-- Les paramètres d'un scénario ne sont pas persistés dans le projet à ce stade.
+- Les paramètres et résultats d'un scénario ne sont pas encore persistés. La
+  simulation n'est pas rattachée à une partie ou à un parc.
 
 ## Dépendances
 

@@ -309,6 +309,25 @@ class ParksPage(QWidget):
         info.addWidget(description)
         info.addWidget(metadata)
 
+        active_mod_labels = {
+            "refined_power": "Refined Power",
+            "digital_storage": "Digital Storage",
+        }
+        active_mods = [
+            label
+            for mod_id, label in active_mod_labels.items()
+            if park.mods.get(mod_id) and park.mods[mod_id].enabled
+        ]
+        mods_summary = QLabel(
+            "MODULES ACTIFS  •  " + (" · ".join(active_mods) if active_mods else "Aucun")
+        )
+        mods_summary.setObjectName("ProjectMetadata")
+        mods_summary.setToolTip(
+            "Modules activés uniquement pour ce parc. Leur configuration "
+            "est gérée dans Mods & extensions."
+        )
+        info.addWidget(mods_summary)
+
         if self.advanced_view:
             technical = QLabel(
                 f"ID : {park.id}\n"

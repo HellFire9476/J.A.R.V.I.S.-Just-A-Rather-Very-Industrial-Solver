@@ -711,7 +711,7 @@ QFrame#SimulationMetricCard {
     border-radius: 9px;
 }
 
-QLabel#SimulationProjectLabel {
+QLabel#SimulationScopeLabel {
     color: #EAA04A;
     font-size: 8pt;
     font-weight: 700;
@@ -821,4 +821,97 @@ QLabel#SimulationWarningText {
 QScrollArea#SimulationResultsScroll {
     background-color: transparent;
     border: none;
+}
+
+/* ==========================================
+   MOD MANAGER
+   ========================================== */
+
+QFrame#ModsInfoPanel {
+    background-color: #1B2631;
+    border: 1px solid #3B4B5B;
+    border-left: 3px solid #E99536;
+    border-radius: 8px;
+}
+
+QComboBox#ModsProjectSelector,
+QComboBox#ModsParkSelector {
+    background-color: #1B2631;
+    color: #E6EDF3;
+    border: 1px solid #3A4B5C;
+    border-radius: 6px;
+    padding: 7px 10px;
+    min-width: 220px;
+}
+
+QComboBox#ModsProjectSelector:hover,
+QComboBox#ModsProjectSelector:focus,
+QComboBox#ModsParkSelector:hover,
+QComboBox#ModsParkSelector:focus {
+    border: 1px solid #E99536;
+}
+
+QScrollArea#ModsScrollArea,
+QWidget#ModsContainer {
+    background-color: transparent;
+    border: none;
+}
+
+QFrame#ModCard {
+    background-color: #1B2631;
+    border: 1px solid #2D3A48;
+    border-radius: 10px;
+}
+
+QFrame#ModCard:hover {
+    border: 1px solid #52677A;
+    background-color: #202D39;
+}
+
+QFrame#ModIconBadge {
+    background-color: #2A3542;
+    border: 1px solid #45586A;
+    border-radius: 10px;
+}
+
+QLabel#ModIcon {
+    color: #F0A044;
+    font-size: 23pt;
+    font-weight: 700;
+}
+
+QLabel#ModCategory {
+    color: #E9AA5E;
+    background-color: #3A3025;
+    border: 1px solid #60482B;
+    border-radius: 5px;
+    padding: 4px 7px;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#ModFeatureList {
+    color: #BEC9D3;
+    font-size: 9pt;
+    padding-top: 3px;
+}
+
+QLabel#ModIntegrationNote {
+    color: #D6A96B;
+    background-color: #29271F;
+    border-left: 2px solid #B87930;
+    padding: 7px 9px;
+    font-size: 8pt;
+}
+
+QLabel#ModStateEnabled {
+    color: #5BC49A;
+    font-size: 8pt;
+    font-weight: 700;
+}
+
+QLabel#ModStateDisabled {
+    color: #91A0AE;
+    font-size: 8pt;
+    font-weight: 700;
 }
