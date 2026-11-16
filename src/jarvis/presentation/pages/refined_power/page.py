@@ -30,6 +30,7 @@ from jarvis.application.services.refined_power_service import RefinedPowerServic
 from jarvis.domain.entities.project import Project
 from jarvis.domain.entities.refined_power import RefinedPowerChainConfiguration
 from jarvis.engines.refined_power_engine import RefinedPowerChainResult
+from jarvis.presentation.numeric_format import format_decimal, format_power
 from jarvis.presentation.pages.refined_power.optimization_panel import (
     RefinedPowerOptimizationPanel,
 )
@@ -1146,7 +1147,7 @@ class RefinedPowerPage(QWidget):
         result: RefinedPowerChainResult,
         preview: bool = False,
     ) -> None:
-        self.power_value.setText(f"{self._format_decimal(result.estimated_power_mw)} MW")
+        self.power_value.setText(f"{format_power(result.estimated_power_mw)} MW")
         self.fuel_value.setText(
             f"{self._format_decimal(result.fuel_consumption_per_minute)} "
             f"{result.fuel_unit}"
@@ -1228,8 +1229,7 @@ class RefinedPowerPage(QWidget):
 
     @staticmethod
     def _format_decimal(value: Decimal) -> str:
-        formatted = f"{value:,.2f}"
-        return formatted.replace(",", " ").replace(".", ",")
+        return format_decimal(value, max_decimals=3, grouping=True)
 
     def _show_error(self, title: str, error: Exception) -> None:
         QMessageBox.critical(self, title, f"{type(error).__name__} : {error}")

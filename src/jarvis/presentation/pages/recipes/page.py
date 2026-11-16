@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from jarvis.application.services.recipe_service import RecipeService
 from jarvis.domain.entities.recipe import Recipe, RecipeComponent, RecipeProducer
+from jarvis.presentation.numeric_format import format_decimal
 
 _INVALID_MODEL_INDEX = QModelIndex()
 
@@ -769,5 +770,4 @@ class RecipesPage(QWidget):
 
     @staticmethod
     def _format_decimal(value: Decimal) -> str:
-        normalized = format(value.normalize(), "f")
-        return normalized.replace(".", ",")
+        return format_decimal(value, max_decimals=3)

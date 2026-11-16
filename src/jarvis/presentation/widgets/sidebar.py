@@ -24,6 +24,7 @@ class Sidebar(QWidget):
     NAV_ITEMS = [
         ("dashboard", "layout-dashboard", "Tableau de bord"),
         ("parks", "building-factory-2", "Parcs industriels"),
+        ("factories", "factory", "Usines"),
         ("network", "hierarchy-2", "Réseau industriel"),
         ("extraction", "shovel", "Extraction"),
         ("energy", "bolt", "Énergie"),

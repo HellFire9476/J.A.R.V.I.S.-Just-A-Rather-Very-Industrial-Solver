@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QInputDialog,
     QLabel,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QTableWidget,
@@ -25,14 +26,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from jarvis.application.services.factory_service import FactoryService
+from jarvis.application.services.park_service import ParkService
 from jarvis.application.services.production_service import ProductionService
 from jarvis.domain.entities.production import ItemProfile, ProductionPlan
+from jarvis.domain.entities.project import Project
 from jarvis.domain.entities.recipe import Recipe, RecipeComponent
 from jarvis.engines.production_engine import (
     ProducerChoiceRequiredError,
     ProductionCalculationError,
     RecipeChoiceRequiredError,
 )
+from jarvis.presentation.dialogs.factory_dialog import SaveSimulationDialog
+from jarvis.presentation.numeric_format import format_decimal, format_power
+from jarvis.presentation.widgets.compact_double_spin_box import CompactDoubleSpinBox
 
 
 class _SimulationCatalogWorker(QThread):
@@ -99,10 +106,15 @@ class SimulationsPage(QWidget):
     def __init__(
         self,
         service: ProductionService | None = None,
+        factory_service: FactoryService | None = None,
+        park_service: ParkService | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.service = service or ProductionService()
+        self.factory_service = factory_service or FactoryService()
+        self.park_service = park_service or ParkService()
+        self.project: Project | None = None
         self._catalog_loaded = False
         self._catalog_loading = False
         self._plan_loading = False
@@ -118,6 +130,9 @@ class SimulationsPage(QWidget):
         self._extractor_clock_limits: dict[str, Decimal] = {}
         self._deferred_choice_error: Exception | None = None
         self._current_plan: ProductionPlan | None = None
+        self._pending_plan_arguments: dict[str, Any] | None = None
+        self._plan_generation = 0
+        self._current_inputs: dict[str, Any] | None = None
         self._active_locale = "fr"
         self._restoring_controls = False
 
@@ -150,15 +165,14 @@ class SimulationsPage(QWidget):
         root.addWidget(subtitle)
 
         self.scope_label = QLabel(
-            "CALCUL THÉORIQUE · INDÉPENDANT DES PARTIES ET DES PARCS"
+            "CALCUL INDÉPENDANT · ENREGISTREMENT DANS UN PARC"
         )
         self.scope_label.setObjectName("SimulationScopeLabel")
         self.scope_label.setToolTip(
-            "Cette rubrique ne dépend d'aucune partie ni d'aucun parc. Elle utilise "
-            "le catalogue technique Satisfactory, l'objectif de production et les "
-            "choix de recettes ou d'extracteurs. Les ressources et les bâtiments "
-            "sont calculés théoriquement : aucun stock, bâtiment posé ou équipement "
-            "possédé dans une sauvegarde n'est consulté."
+            "Le calcul reste théorique et indépendant des parties et des parcs : il utilise "
+            "le catalogue Satisfactory, l'objectif et les choix de recettes ou d'extracteurs. "
+            "Aucun stock ni bâtiment posé n'est consulté. Avec une partie active, le résultat "
+            "peut ensuite être enregistré comme scénario dans une usine d'un parc."
         )
         root.addWidget(self.scope_label)
 
@@ -210,7 +224,7 @@ class SimulationsPage(QWidget):
         )
         self.target_combo.currentIndexChanged.connect(self._on_target_changed)
 
-        self.rate_spin = QDoubleSpinBox()
+        self.rate_spin = CompactDoubleSpinBox()
         self.rate_spin.setObjectName("SimulationInput")
         self.rate_spin.setDecimals(3)
         self.rate_spin.setRange(0.001, 1_000_000_000)
@@ -222,6 +236,7 @@ class SimulationsPage(QWidget):
             "objets/min ; un liquide ou un gaz utilise m³/min. Ce champ définit "
             "l'objectif à atteindre, pas la capacité d'une machine."
         )
+        self.rate_spin.valueChanged.connect(self._on_simulation_parameter_edited)
 
         self.locale_combo = QComboBox()
         self.locale_combo.setObjectName("SimulationInput")
@@ -244,6 +259,9 @@ class SimulationsPage(QWidget):
             "affichés dans le libellé destiné au joueur."
         )
         self.recipe_combo.setEnabled(False)
+        self.recipe_combo.currentIndexChanged.connect(
+            self._on_simulation_parameter_edited
+        )
 
         self.calculate_button = QPushButton("Calculer la production")
         self.calculate_button.setObjectName("PrimaryButton")
@@ -468,6 +486,20 @@ class SimulationsPage(QWidget):
         warning_layout.addWidget(self.warning_label)
         self.results_layout.addWidget(warning_panel)
 
+        result_actions = QHBoxLayout()
+        result_actions.addStretch()
+        self.save_factory_button = QPushButton("Enregistrer dans une usine")
+        self.save_factory_button.setObjectName("PrimaryButton")
+        self.save_factory_button.setMinimumHeight(40)
+        self.save_factory_button.setEnabled(False)
+        self.save_factory_button.setToolTip(
+            "Enregistre les paramètres et un instantané complet de ce calcul dans une usine "
+            "rattachée à l'un des parcs de la partie active. Le calcul d'origine reste inchangé."
+        )
+        self.save_factory_button.clicked.connect(self._save_current_plan)
+        result_actions.addWidget(self.save_factory_button)
+        self.results_layout.addLayout(result_actions)
+
         self.results_scroll.setWidget(self.results_body)
         root.addWidget(self.results_scroll, 1)
         self.results_scroll.setVisible(False)
@@ -565,6 +597,16 @@ class SimulationsPage(QWidget):
         if self._catalog_loaded or self._catalog_loading:
             return
         self._start_catalog_load(self._active_locale)
+
+    def set_project(self, project: Project | None) -> None:
+        """Associe les prochaines sauvegardes au projet actif."""
+
+        current_project_id = self.project.id if self.project is not None else None
+        new_project_id = project.id if project is not None else None
+        if current_project_id != new_project_id:
+            self._clear_results()
+        self.project = project
+        self._update_save_button()
 
     def _start_catalog_load(self, locale: str) -> None:
         if self._catalog_loading or self._plan_loading:
@@ -751,6 +793,11 @@ class SimulationsPage(QWidget):
             "machine_clock_limits": dict(self._machine_clock_limits),
             "extractor_clock_limits": dict(self._extractor_clock_limits),
         }
+        self._plan_generation += 1
+        request_generation = self._plan_generation
+        self._pending_plan_arguments = dict(arguments)
+        self._current_inputs = None
+        self._update_save_button()
         self._plan_loading = True
         self.calculate_button.setEnabled(False)
         self.target_combo.setEnabled(False)
@@ -767,7 +814,13 @@ class SimulationsPage(QWidget):
 
         worker = _ProductionPlanWorker(self.service, arguments, self)
         self._plan_worker = worker
-        worker.completed.connect(self._on_plan_completed)
+        worker.completed.connect(
+            lambda plan, error, generation=request_generation: self._on_plan_completed(
+                plan,
+                error,
+                generation,
+            )
+        )
         worker.finished.connect(self._on_plan_finished)
         worker.finished.connect(worker.deleteLater)
         worker.start()
@@ -776,9 +829,18 @@ class SimulationsPage(QWidget):
         self,
         plan: ProductionPlan | None,
         error: Exception | None,
+        request_generation: int | None = None,
     ) -> None:
+        if (
+            request_generation is not None
+            and request_generation != self._plan_generation
+        ):
+            return
         if error is not None:
             self._current_plan = None
+            self._current_inputs = None
+            self._pending_plan_arguments = None
+            self._update_save_button()
             self.results_scroll.setVisible(False)
             if isinstance(
                 error,
@@ -792,9 +854,16 @@ class SimulationsPage(QWidget):
                 self.status_label.setText(self._format_error(error))
             return
         if plan is None:
+            self._current_plan = None
+            self._current_inputs = None
+            self._pending_plan_arguments = None
+            self._update_save_button()
             self.status_label.setText("Le moteur n'a retourné aucun résultat.")
             return
         self._current_plan = plan
+        self._current_inputs = dict(self._pending_plan_arguments or {})
+        self._pending_plan_arguments = None
+        self._update_save_button()
         self._render_plan(plan)
         self.results_scroll.setVisible(True)
         self.status_label.setText("Simulation calculée avec le catalogue local Satisfactory.")
@@ -1326,7 +1395,7 @@ class SimulationsPage(QWidget):
 
     @staticmethod
     def _create_clock_spin(value: Decimal, tooltip: str) -> QDoubleSpinBox:
-        spin = QDoubleSpinBox()
+        spin = CompactDoubleSpinBox()
         spin.setObjectName("SimulationClockSpin")
         spin.setRange(1.0, 250.0)
         spin.setDecimals(1)
@@ -1361,11 +1430,83 @@ class SimulationsPage(QWidget):
             self._extractor_choices[resource_class] = selected
             self._calculate_plan()
 
+    def _on_simulation_parameter_edited(self, *_args: Any) -> None:
+        """Invalide un résultat dès qu'un paramètre manuel change."""
+
+        if self._plan_loading or self._restoring_controls:
+            return
+        if self._current_plan is None and self._current_inputs is None:
+            return
+        self._clear_results()
+        self.status_label.setText(
+            "Les paramètres ont changé. Relancez le calcul avant d'enregistrer ce scénario."
+        )
+
     def _clear_results(self) -> None:
+        self._plan_generation += 1
+        self._deferred_choice_error = None
         self._current_plan = None
+        self._current_inputs = None
+        self._pending_plan_arguments = None
+        self._update_save_button()
         self.results_scroll.setVisible(False)
         self.status_label.setText(
             "Choisissez un produit et un débit, puis lancez le calcul."
+        )
+
+    def _update_save_button(self) -> None:
+        button = getattr(self, "save_factory_button", None)
+        if button is not None:
+            button.setEnabled(
+                self._current_plan is not None
+                and self._current_inputs is not None
+                and self.project is not None
+            )
+
+    def _save_current_plan(self) -> None:
+        if self.project is None or self._current_plan is None or self._current_inputs is None:
+            return
+        dialog = SaveSimulationDialog(
+            self.project,
+            self._current_plan,
+            self.park_service,
+            self.factory_service,
+            self,
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        values = dialog.get_values()
+        try:
+            factory, scenario = self.factory_service.save_simulation(
+                self.project.id,
+                values["park_id"],
+                values["scenario_name"],
+                self._current_plan,
+                self._current_inputs,
+                factory_id=values["factory_id"],
+                factory_name=values["factory_name"],
+                factory_description=values["factory_description"],
+            )
+        except ValueError as error:
+            QMessageBox.warning(self, "Enregistrement impossible", str(error))
+            return
+        except Exception as error:
+            QMessageBox.critical(
+                self,
+                "Enregistrement impossible",
+                f"Le résultat n'a pas pu être enregistré :\n{error}",
+            )
+            return
+
+        self.status_label.setText(
+            f"Simulation enregistrée dans l'usine « {factory.name} » "
+            f"({scenario.name}). Le résultat enregistré est un instantané du calcul."
+        )
+        QMessageBox.information(
+            self,
+            "Simulation enregistrée",
+            f"Le scénario « {scenario.name} » a été enregistré dans l'usine "
+            f"« {factory.name} » du parc sélectionné.",
         )
 
     def _set_controls_enabled(self, enabled: bool) -> None:
@@ -1518,13 +1659,11 @@ class SimulationsPage(QWidget):
 
     @staticmethod
     def _format_decimal(value: Decimal) -> str:
-        rounded = value.quantize(Decimal("0.01"))
-        text = format(rounded, "f").rstrip("0").rstrip(".")
-        return text or "0"
+        return format_decimal(value, max_decimals=3)
 
     @staticmethod
     def _format_power_value(value: Decimal) -> str:
-        return f"{value.quantize(Decimal('0.01')):.2f} MW"
+        return f"{format_power(value)} MW"
 
     @classmethod
     def _format_power(

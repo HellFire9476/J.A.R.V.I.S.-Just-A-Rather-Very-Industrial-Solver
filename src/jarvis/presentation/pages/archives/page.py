@@ -1280,6 +1280,11 @@ class ArchivesPage(QWidget):
                     record.archive_id,
                     destination,
                 )
+            elif record.entity_type == "factory":
+                self.service.restore_factory_archive(
+                    record.archive_id,
+                    destination,
+                )
             else:
                 self.service.restore_archive(
                     record.archive_id,

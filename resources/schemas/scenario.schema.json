@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/schemas/scenario.schema.json",
+  "title": "J.A.R.V.I.S. Production Scenario Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "project_id", "park_id", "factory_id", "name", "target_class_name", "target_name", "target_rate_per_minute", "target_unit_label", "locale", "simulation_inputs", "plan_snapshot", "created_at"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "id": {"type": "string", "format": "uuid"},
+    "project_id": {"type": "string", "format": "uuid"},
+    "park_id": {"type": "string", "format": "uuid"},
+    "factory_id": {"type": "string", "format": "uuid"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 120},
+    "target_class_name": {"type": "string", "minLength": 1},
+    "target_name": {"type": "string", "minLength": 1},
+    "target_rate_per_minute": {"type": "string", "pattern": "^(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"},
+    "target_unit_label": {"type": "string", "minLength": 1},
+    "locale": {"type": "string", "minLength": 2},
+    "simulation_inputs": {"type": "object"},
+    "plan_snapshot": {"type": "object"},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

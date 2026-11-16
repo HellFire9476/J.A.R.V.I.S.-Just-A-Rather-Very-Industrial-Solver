@@ -102,7 +102,7 @@ def test_refined_power_page_creates_and_calculates_chain_for_selected_park(tmp_p
     chains = refined_power_service.list_chains(project.id, park.id)
     assert len(chains) == 1
     assert chains[0].name == "Centrale charbon UI"
-    assert page.power_value.text() == "150,00 MW"
+    assert page.power_value.text() == "150 MW"
     assert page.result_state_label.text() == "FLUX ÉQUILIBRÉS"
 
     page.park_combo.setCurrentIndex(page.park_combo.findData(str(park.id)))
@@ -206,6 +206,7 @@ def test_refined_power_is_registered_as_an_independent_navigation_page():
 
 def test_refined_power_page_exposes_three_optimization_modes(tmp_path):
     pytest.importorskip("PySide6")
+    from PySide6.QtCore import QLocale
     from PySide6.QtWidgets import QApplication
 
     from jarvis.presentation.pages.refined_power.page import RefinedPowerPage
@@ -228,6 +229,9 @@ def test_refined_power_page_exposes_three_optimization_modes(tmp_path):
     )
 
     optimizer = page.optimization_panel
+    optimizer.target_power_spin.setLocale(
+        QLocale(QLocale.Language.French, QLocale.Country.France)
+    )
     assert page.detail_tabs.tabText(1) == "Équilibrage automatique"
     assert [
         optimizer.mode_combo.itemData(index)
@@ -235,6 +239,8 @@ def test_refined_power_page_exposes_three_optimization_modes(tmp_path):
     ] == ["balance_existing", "maximize", "target"]
     assert optimizer.preview_button.isEnabled() is True
     assert optimizer.apply_button.isEnabled() is False
+    assert optimizer.target_power_spin.textFromValue(500.0) == "500"
+    assert optimizer.target_power_spin.textFromValue(250.5) == "250,5"
 
     page.close()
     app.processEvents()

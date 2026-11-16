@@ -29,7 +29,9 @@ la destruction d'un thread Qt encore actif.
 
 ## Portée actuelle
 
-- Le plan est consultatif : il n'est pas encore enregistré comme scénario.
+- Le calcul reste consultatif et indépendant des parties et des parcs : il ne consulte
+  aucun stock ni bâtiment posé. Après un calcul, son résultat peut être enregistré
+  comme scénario dans une usine d'un parc de la partie active.
 - Les réglages de pureté des gisements ne sont pas encore proposés dans l'interface.
 - Les recettes ambiguës sont proposées dans le sélecteur ; le moteur reste l'autorité
   finale sur la validité du choix.
@@ -46,8 +48,11 @@ la destruction d'un thread Qt encore actif.
   d'autres branches.
 - Les calculs de réseaux de puits et leurs pressuriseurs restent signalés comme
   incomplets par le moteur.
-- Les paramètres et résultats d'un scénario ne sont pas encore persistés. La
-  simulation n'est pas rattachée à une partie ou à un parc.
+- Chaque scénario enregistré conserve les paramètres d'entrée et un instantané JSON
+  du plan calculé. Les modifications ultérieures du catalogue ne recalculent pas
+  automatiquement les scénarios déjà enregistrés.
+- Une modification du produit, du débit, de la recette ou d'un autre paramètre manuel
+  invalide le résultat affiché ; il faut relancer le calcul avant de pouvoir le sauvegarder.
 
 ## Dépendances
 

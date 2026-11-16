@@ -33,7 +33,10 @@ def write_json_atomic(
 
     try:
         file_descriptor, temp_name = tempfile.mkstemp(
-            prefix=f".{path.name}.",
+            # A fixed short prefix is important on Windows: scenario paths are nested
+            # under project/park/factory directories, and repeating the full target
+            # filename here can push the temporary path beyond the legacy MAX_PATH.
+            prefix=".tmp-",
             suffix=".tmp",
             dir=path.parent,
         )

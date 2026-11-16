@@ -8,7 +8,6 @@ from uuid import UUID
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
-    QDoubleSpinBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -29,6 +28,8 @@ from jarvis.domain.entities.refined_power_optimization import (
     RefinedPowerOptimizationRequest,
     RefinedPowerOptimizationSolution,
 )
+from jarvis.presentation.numeric_format import format_decimal, format_power
+from jarvis.presentation.widgets.compact_double_spin_box import CompactDoubleSpinBox
 
 
 class RefinedPowerOptimizationPanel(QWidget):
@@ -158,7 +159,7 @@ class RefinedPowerOptimizationPanel(QWidget):
         request_grid.addWidget(self._field_label("NOM DE LA PROPOSITION"), 1, 0)
         request_grid.addWidget(self.chain_name_input, 1, 1)
 
-        self.target_power_spin = QDoubleSpinBox()
+        self.target_power_spin = CompactDoubleSpinBox()
         self.target_power_spin.setObjectName("RPOTargetPower")
         self.target_power_spin.setRange(0.1, 500000.0)
         self.target_power_spin.setDecimals(2)
@@ -867,10 +868,10 @@ class RefinedPowerOptimizationPanel(QWidget):
         before = solution.reference_calculation
         after = solution.calculation
         self.before_power_value.setText(
-            f"{self._format_decimal(before.estimated_power_mw)} MW" if before else "—"
+            f"{format_power(before.estimated_power_mw)} MW" if before else "—"
         )
         self.after_power_value.setText(
-            f"{self._format_decimal(after.estimated_power_mw)} MW" if after else "Aucune"
+            f"{format_power(after.estimated_power_mw)} MW" if after else "Aucune"
         )
         self.water_value.setText(
             f"{self._format_decimal(after.water_consumption_m3_per_minute)} m³/min"
@@ -964,7 +965,7 @@ class RefinedPowerOptimizationPanel(QWidget):
 
     @staticmethod
     def _format_decimal(value: Decimal) -> str:
-        return f"{value:,.2f}".replace(",", " ").replace(".", ",")
+        return format_decimal(value, max_decimals=3, grouping=True)
 
 
 __all__ = ["RefinedPowerOptimizationPanel"]

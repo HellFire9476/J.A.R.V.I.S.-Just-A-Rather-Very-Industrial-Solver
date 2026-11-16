@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (
 )
 
 from jarvis.app.navigation import PlaceholderPage
+from jarvis.application.services.factory_service import FactoryService
 from jarvis.application.services.mod_service import ModService
+from jarvis.application.services.park_service import ParkService
 from jarvis.application.services.production_service import ProductionService
 from jarvis.application.services.project_service import ProjectService
 from jarvis.application.services.recipe_service import RecipeService
@@ -18,6 +20,7 @@ from jarvis.application.services.refined_power_service import RefinedPowerServic
 from jarvis.domain.entities.project import Project
 from jarvis.presentation.pages.archives.page import ArchivesPage
 from jarvis.presentation.pages.dashboard.page import DashboardPage
+from jarvis.presentation.pages.factories.page import FactoriesPage
 from jarvis.presentation.pages.mods.page import ModsPage
 from jarvis.presentation.pages.parks.page import ParksPage
 from jarvis.presentation.pages.projects.page import ProjectPage
@@ -32,6 +35,7 @@ class MainWindow(QMainWindow):
 
     PROJECT_REQUIRED_PAGES = {
         "parks",
+        "factories",
         "network",
         "extraction",
         "energy",
@@ -119,6 +123,8 @@ class MainWindow(QMainWindow):
 
         # Gestion des projets
         self.project_service = ProjectService()
+        self.park_service = ParkService()
+        self.factory_service = FactoryService()
         self.projects_page = ProjectPage(self.project_service)
 
         self.projects_page.project_opened.connect(
@@ -136,16 +142,27 @@ class MainWindow(QMainWindow):
         self._register_page("projects", self.projects_page)
 
         # Gestion des parcs industriels
-        self.parks_page = ParksPage()
-
+        self.parks_page = ParksPage(self.park_service)
+        self.parks_page.parks_changed.connect(self._refresh_factory_park_context)
         self._register_page("parks", self.parks_page)
+
+        # Usines : stockage des scénarios de production au niveau d'un parc.
+        self.factories_page = FactoriesPage(
+            self.factory_service,
+            self.park_service,
+        )
+        self._register_page("factories", self.factories_page)
 
         # Catalogue Satisfactory : indépendant du projet actif.
         self.recipes_page = RecipesPage(RecipeService())
         self._register_page("recipes", self.recipes_page)
 
         # Simulations : interface de pilotage du moteur de production.
-        self.simulations_page = SimulationsPage(ProductionService())
+        self.simulations_page = SimulationsPage(
+            ProductionService(),
+            self.factory_service,
+            self.park_service,
+        )
         self._register_page("simulations", self.simulations_page)
 
         # Modules optionnels : activation indépendante pour chaque parc.
@@ -209,6 +226,9 @@ class MainWindow(QMainWindow):
         elif page_id == "parks":
             self.parks_page.refresh()
 
+        elif page_id == "factories":
+            self.factories_page.refresh()
+
         elif page_id == "archives":
             self.archives_page.refresh()
 
@@ -224,6 +244,12 @@ class MainWindow(QMainWindow):
         elif page_id == "refined_power":
             self.refined_power_page.refresh()
 
+    def _refresh_factory_park_context(self) -> None:
+        """Actualise le sélecteur de parcs de la page Usines."""
+
+        if self.active_project is not None:
+            self.factories_page.set_project(self.active_project)
+
     def _open_parks_from_dashboard(self):
         """Accède aux parcs ou à la gestion des projets."""
 
@@ -238,6 +264,8 @@ class MainWindow(QMainWindow):
         self.active_project = project
 
         self.parks_page.set_project(project)
+        self.factories_page.set_project(project)
+        self.simulations_page.set_project(project)
         self.mods_page.set_project(project)
         self.refined_power_page.set_project(project)
 
@@ -262,6 +290,8 @@ class MainWindow(QMainWindow):
         ):
             self.active_project = project
             self.parks_page.set_project(project)
+            self.factories_page.set_project(project)
+            self.simulations_page.set_project(project)
             self.mods_page.set_project(project)
             self.refined_power_page.set_project(project)
 
@@ -284,6 +314,8 @@ class MainWindow(QMainWindow):
         ):
             self.active_project = None
             self.parks_page.set_project(None)
+            self.factories_page.set_project(None)
+            self.simulations_page.set_project(None)
             self.mods_page.set_project(None)
             self.refined_power_page.set_project(None)
 
